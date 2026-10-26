@@ -56,6 +56,7 @@ class DonorsIntegrationTest {
         mockMvc.perform(get("/api/v1/donors/{id}", id).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.firstName").value("Meera"))      // from the People registry
+                .andExpect(jsonPath("$.type").value("INDIVIDUAL"))                // the default
                 .andExpect(jsonPath("$.panMasked").value("XXXXXX234F"))
                 .andExpect(jsonPath("$.receivesUpdates").value(true));
     }

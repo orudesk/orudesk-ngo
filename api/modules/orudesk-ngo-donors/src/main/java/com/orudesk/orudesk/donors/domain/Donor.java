@@ -12,30 +12,43 @@ public final class Donor {
 
     private final DonorId id;
     private final UUID personId;
-    private final Pan pan;                 // null: not given (they won't get a tax receipt)
+    private final DonorType type;
+    private final Pan pan;                 // null: not given
+    private final boolean wantsTaxReceipt;
     private final boolean receivesUpdates;
     private final LocalDate registeredOn;
 
-    private Donor(DonorId id, UUID personId, Pan pan, boolean receivesUpdates, LocalDate registeredOn) {
+    private Donor(DonorId id, UUID personId, DonorType type, Pan pan, boolean wantsTaxReceipt,
+                  boolean receivesUpdates, LocalDate registeredOn) {
         this.id = Objects.requireNonNull(id);
         this.personId = Objects.requireNonNull(personId, "a donor is always a person");
+        this.type = Objects.requireNonNull(type);
         this.pan = pan;
+        this.wantsTaxReceipt = wantsTaxReceipt;
         this.receivesUpdates = receivesUpdates;
         this.registeredOn = Objects.requireNonNull(registeredOn);
     }
 
-    public static Donor register(UUID personId, Pan pan, boolean receivesUpdates, LocalDate today) {
-        return new Donor(DonorId.newId(), personId, pan, receivesUpdates, today);
+    /** @throws IllegalArgumentException if they want a tax receipt but gave no PAN: it's issued against one */
+    public static Donor register(UUID personId, DonorType type, Pan pan, boolean wantsTaxReceipt,
+                                 boolean receivesUpdates, LocalDate today) {
+        if (wantsTaxReceipt && pan == null) {
+            throw new IllegalArgumentException("a tax receipt needs a PAN");
+        }
+        return new Donor(DonorId.newId(), personId, type, pan, wantsTaxReceipt, receivesUpdates, today);
     }
 
     /** For the persistence adapter: rebuilds a donor that already exists. */
-    public static Donor restore(DonorId id, UUID personId, Pan pan, boolean receivesUpdates, LocalDate registeredOn) {
-        return new Donor(id, personId, pan, receivesUpdates, registeredOn);
+    public static Donor restore(DonorId id, UUID personId, DonorType type, Pan pan, boolean wantsTaxReceipt,
+                                boolean receivesUpdates, LocalDate registeredOn) {
+        return new Donor(id, personId, type, pan, wantsTaxReceipt, receivesUpdates, registeredOn);
     }
 
     public DonorId id() { return id; }
     public UUID personId() { return personId; }
+    public DonorType type() { return type; }
     public Pan pan() { return pan; }
+    public boolean wantsTaxReceipt() { return wantsTaxReceipt; }
     public boolean receivesUpdates() { return receivesUpdates; }
     public LocalDate registeredOn() { return registeredOn; }
 }
