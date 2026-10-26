@@ -16,6 +16,8 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orudesk}
     username: ${DB_USERNAME:orudesk_app}
     password: ${DB_PASSWORD}
+    hikari:
+      connection-timeout: 5000   # ms: fail fast with a 503 when the database is down (see the core's Day 36)
 
   jpa:
     hibernate:
@@ -65,3 +67,9 @@ management:
   health:
     redis:
       enabled: false
+
+# The OpenAPI contract, sorted and indented so it diffs cleanly (the web app's client is generated from it)
+springdoc:
+  writer-with-order-by-keys: true
+  writer-with-default-pretty-printer: true
+  default-produces-media-type: application/json

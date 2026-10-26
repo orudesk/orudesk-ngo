@@ -35,11 +35,26 @@ cd ../orudesk-ngo/api
 
 Swagger UI: <http://localhost:8080/swagger-ui.html>. Log in, then try `registerDonor`.
 
+The web app (Node 22.12+), in a second terminal:
+
+```bash
+cd orudesk-ngo/web
+corepack enable
+pnpm install         # also links the core's web packages from ../../orudesk/web
+pnpm dev             # http://localhost:5173: the core's screens plus Donors
+```
+
+`web/` is the NGO edition's app: `src/main.tsx` starts the core's app with one more module,
+`src/ngoModule.tsx`, which adds the donor screens. Its API client is generated from this edition's contract
+(`pnpm contract:sync` after changing the API, as in the core).
+
 ## Run the tests
 
 ```bash
 cd api
 ./gradlew test       # needs Docker
+cd ../web
+pnpm check           # format, lint, types, tests
 ```
 
 ## Licence

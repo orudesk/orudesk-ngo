@@ -1,0 +1,8 @@
+# This app, plus the core's web packages from the core checkout next to this repository (../../orudesk), the
+# same side-by-side layout the Gradle build uses. One workspace means one copy of React and Mantine for both.
+#
+# Until @orudesk/web-core is published to npm, `pnpm install` here also links the core's packages to this
+# workspace's node_modules: after switching to work on the core, run `pnpm install` there again.
+packages:
+  - '.'
+  - '../../orudesk/web/packages/*'

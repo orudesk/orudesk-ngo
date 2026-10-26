@@ -11,6 +11,7 @@ import com.orudesk.orudesk.donors.application.port.in.RegisterDonorUseCase;
 import com.orudesk.orudesk.donors.application.port.in.SearchDonorsQuery;
 import com.orudesk.orudesk.donors.domain.DonorType;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -48,6 +49,7 @@ class DonorController {
 
     @PostMapping
     @Operation(operationId = "registerDonor", summary = "Add a donor (and the person, to the registry)")
+    @ApiResponse(responseCode = "201", description = "Created", useReturnTypeSchema = true)
     ResponseEntity<RegisterDonorResponse> register(@Valid @RequestBody RegisterDonorRequest request) {
         UUID id = registerDonor.register(new RegisterDonorCommand(request.firstName(), request.lastName(),
                 request.dateOfBirth(), request.phone(), request.email(), request.type(), request.pan(),

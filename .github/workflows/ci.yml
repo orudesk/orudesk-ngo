@@ -26,6 +26,41 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew test
         working-directory: orudesk-ngo/api
+      - name: The web client's copy of the OpenAPI contract is up to date
+        run: |
+          diff -u orudesk-ngo/web/openapi/orudesk-ngo.json orudesk-ngo/api/apps/orudesk-ngo/build/openapi/orudesk-ngo.json \
+            || { echo "::error::The API contract changed. Run 'pnpm contract:sync' in web/ and commit."; exit 1; }
+
+  # The web app: it builds against the core's web packages in ../orudesk, like the API does.
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orudesk-ngo/web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: orudesk-ngo
+      - uses: actions/checkout@v4
+        with:
+          repository: orudesk/orudesk
+          path: orudesk
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: orudesk-ngo/web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: orudesk-ngo/web/.nvmrc
+          cache: pnpm
+          cache-dependency-path: orudesk-ngo/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: The generated client matches the contract
+        run: |
+          pnpm generate
+          git diff --exit-code -- src/generated \
+            || { echo "::error::Run 'pnpm generate' in web/ and commit."; exit 1; }
+      - run: pnpm check
+      - run: pnpm build
 
   # Build the image on every PR (without pushing), from both checkouts, the same way a release does.
   image:
