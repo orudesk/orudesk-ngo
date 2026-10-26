@@ -7,6 +7,7 @@ dependencies {
     implementation 'com.orudesk:orudesk-platform-core'
     implementation 'com.orudesk:orudesk-identity'
     implementation 'com.orudesk:orudesk-party'
+    implementation 'com.orudesk:orudesk-audit'       // who changed what (the core's Day 42)
     implementation project(':modules:orudesk-ngo-donors')
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
