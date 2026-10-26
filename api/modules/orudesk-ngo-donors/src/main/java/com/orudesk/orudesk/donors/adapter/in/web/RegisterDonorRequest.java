@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDate;
 
@@ -18,11 +19,11 @@ import java.time.LocalDate;
 record RegisterDonorRequest(
         @NotBlank @Size(max = 100) String firstName,
         @NotBlank @Size(max = 100) String lastName,
-        LocalDate dateOfBirth,
-        @Size(max = 30) String phone,
-        @Email @Size(max = 320) String email,
-        DonorType type,
-        @Pattern(regexp = "^[A-Za-z]{5}[0-9]{4}[A-Za-z]$", message = "must look like ABCDE1234F") String pan,
-        Boolean wantsTaxReceipt,
-        Boolean receivesUpdates) {
+        @Nullable LocalDate dateOfBirth,
+        @Size(max = 30) @Nullable String phone,
+        @Email @Size(max = 320) @Nullable String email,
+        @Nullable DonorType type,
+        @Pattern(regexp = "^[A-Za-z]{5}[0-9]{4}[A-Za-z]$", message = "must look like ABCDE1234F") @Nullable String pan,
+        @Nullable Boolean wantsTaxReceipt,
+        @Nullable Boolean receivesUpdates) {
 }
