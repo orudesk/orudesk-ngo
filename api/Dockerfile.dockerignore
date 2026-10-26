@@ -1,0 +1,6 @@
+# Keep the build context small and secret-free: no build output, no local .env, no git history.
+**/build
+**/.gradle
+**/.env
+**/.git
+**/node_modules

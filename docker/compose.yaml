@@ -1,0 +1,57 @@
+# The NGO edition with its database and Redis. Run it from the folder that holds this repository AND
+# the core (orudesk/) side by side, because the image is built from both:
+#   docker compose --env-file orudesk-ngo/api/.env -f orudesk-ngo/docker/compose.yaml up -d --build --wait
+name: orudesk-ngo
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: orudesk
+      POSTGRES_USER: orudesk_app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in api/.env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "orudesk_app", "-d", "orudesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: ../..
+      dockerfile: orudesk-ngo/api/Dockerfile
+    image: ghcr.io/orudesk/orudesk-ngo:${ORUDESK_VERSION:-latest}
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ORUDESK_JWT_SECRET: ${ORUDESK_JWT_SECRET:?set ORUDESK_JWT_SECRET in api/.env}
+      ORUDESK_ADMIN_EMAIL: ${ORUDESK_ADMIN_EMAIL:-}
+      ORUDESK_ADMIN_PASSWORD: ${ORUDESK_ADMIN_PASSWORD:-}
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
