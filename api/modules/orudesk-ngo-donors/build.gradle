@@ -1,0 +1,11 @@
+// Donors: the people and organisations that give to the NGO. Owns the ngo_donor table.
+plugins {
+    id 'orudesk-ngo.java-conventions'
+}
+
+dependencies {
+    implementation 'com.orudesk:orudesk-platform-core'   // ModuleMigrations, tenancy, security
+    implementation 'com.orudesk:orudesk-identity'        // RoleDefinition
+    implementation 'com.orudesk:orudesk-party'           // every donor is a person in the registry
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+}

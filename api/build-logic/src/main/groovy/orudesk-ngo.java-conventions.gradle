@@ -1,0 +1,37 @@
+// Applied by every Java module of the NGO edition: same Java version, the core's versions, same tests.
+plugins {
+    id 'java-library'
+}
+
+group = 'com.orudesk.ngo'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+configurations {
+    mockitoAgent
+}
+
+dependencies {
+    // The Orudesk BOM: the core modules' versions and the Spring Boot they were tested with
+    def orudesk = platform("com.orudesk:orudesk-bom:${providers.gradleProperty('orudeskVersion').get()}")
+    implementation orudesk
+    testImplementation orudesk
+    mockitoAgent orudesk
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    mockitoAgent('org.mockito:mockito-core') { transitive = false }
+}
+
+tasks.named('compileJava') {
+    options.compilerArgs << '-parameters'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
+}
