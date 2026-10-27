@@ -33,7 +33,7 @@ jobs:
           repository: orudesk/orudesk
           ref: v${{ steps.v.outputs.core }}
           path: orudesk
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '25'
