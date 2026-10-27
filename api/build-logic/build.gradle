@@ -4,5 +4,5 @@ plugins {
 
 dependencies {
     // Must be the Spring Boot version of the core release we build on (see the core's CHANGELOG)
-    implementation 'org.springframework.boot:spring-boot-gradle-plugin:4.1.1'
+    implementation 'org.springframework.boot:spring-boot-gradle-plugin:4.1.2'
 }

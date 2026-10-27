@@ -7,6 +7,9 @@ Every release of Orudesk NGO, newest first ([Keep a Changelog](https://keepachan
 
 ### Added
 
+- The core's audit log: the app includes `orudesk-audit`, so registering people and users and giving roles are
+  recorded, and admins have the Activity page.
+
 - `web/`: the NGO edition's web app, the core's screens plus Donors: counts by type, search and filter by
   type, add a donor (the server's messages under each field), and a donor's page with the PAN masked.
 - The edition's OpenAPI contract, saved by `OpenApiContractTest` to `build/openapi/orudesk-ngo.json`; CI
