@@ -1,0 +1,9 @@
+// Applied only by the runnable app.
+plugins {
+    id 'orudesk-ngo.java-conventions'
+    id 'org.springframework.boot'
+}
+
+tasks.named('bootRun') {
+    workingDir = rootProject.projectDir   // run from api/, so the app finds api/.env
+}

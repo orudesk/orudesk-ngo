@@ -1,0 +1,29 @@
+// The runnable NGO edition: the core's modules plus the NGO modules, one app.
+plugins {
+    id 'orudesk-ngo.spring-boot-app'
+}
+
+dependencies {
+    implementation 'com.orudesk:orudesk-platform-core'
+    implementation 'com.orudesk:orudesk-identity'
+    implementation 'com.orudesk:orudesk-party'
+    implementation project(':modules:orudesk-ngo-donors')
+
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testImplementation testFixtures('com.orudesk:orudesk-platform-core')   // TestcontainersConfiguration
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+    testImplementation 'org.springframework.modulith:spring-modulith-core'   // version from the Orudesk BOM
+}
+
+springBoot {
+    buildInfo()
+}
+
+tasks.named('bootRun') {
+    args = ['--spring.profiles.active=local']
+}

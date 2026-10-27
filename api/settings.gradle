@@ -1,0 +1,28 @@
+// The NGO edition: the Orudesk core plus the modules NGOs need (donors first).
+pluginManagement {
+    // This repository's own conventions. Renamed: the core (included below) has a "build-logic" too, and
+    // two included builds may not share a name.
+    includeBuild('build-logic') {
+        name = 'ngo-build-logic'
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'orudesk-ngo'
+
+// Build against the core in the folder next to this repository (../orudesk), instead of a released
+// version: Gradle swaps every com.orudesk:orudesk-* dependency for that folder's modules. Change the
+// core, and this build sees it at once. Delete this line to use the released core from Maven Central.
+includeBuild '../../orudesk/api'
+
+include 'modules:orudesk-ngo-donors'
+include 'apps:orudesk-ngo'
