@@ -14,7 +14,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: orudesk-ngo
       - name: Check the tag matches gradle.properties, and find the core version
@@ -28,7 +28,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "core=$(grep '^orudeskVersion=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
       # The core at its release tag, not main: a release is built from released code only.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: orudesk/orudesk
           ref: v${{ steps.v.outputs.core }}
