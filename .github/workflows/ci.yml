@@ -45,7 +45,7 @@ jobs:
         with:
           repository: orudesk/orudesk
           path: orudesk
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: orudesk-ngo/web/package.json
       - uses: actions/setup-node@v4
