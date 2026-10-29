@@ -66,6 +66,10 @@ orudesk:
       secret: ${ORUDESK_JWT_SECRET}
       access-token-ttl: 15m
       refresh-token-ttl: 14d
+    # New passwords are checked against Have I Been Pwned's breached passwords. Only the first five characters of
+    # the password's SHA-1 are sent. Turn off for servers without internet access.
+    breached-passwords:
+      enabled: ${ORUDESK_BREACHED_PASSWORD_CHECK:true}
   # The outbox (core Days 51 and 54): completed work kept a week; failed work retried 1, 2, 4... minutes apart
   events:
     keep-completed: ${ORUDESK_EVENTS_KEEP_COMPLETED:7d}
