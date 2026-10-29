@@ -1,4 +1,4 @@
-import { problemMessage } from '@orudesk/web-core';
+import { saveError } from '@orudesk/web-core';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNgoApi, type NgoSchemas } from './api';
 
@@ -66,16 +66,6 @@ export function useDonor(donorId: string) {
   });
 }
 
-/** The API refused the form: a message per field, as the core's people form does it (Day 35). */
-export class DonorValidationError extends Error {
-  constructor(
-    message: string,
-    readonly fields: Record<string, string>,
-  ) {
-    super(message);
-  }
-}
-
 export function useRegisterDonor() {
   const api = useNgoApi();
   const queryClient = useQueryClient();
@@ -83,11 +73,7 @@ export function useRegisterDonor() {
     mutationFn: async (donor: NgoSchemas['RegisterDonorRequest']) => {
       const { data, error, response } = await api.POST('/api/v1/donors', { body: donor });
       if (data) return data.id;
-      if (response.status === 400) {
-        const fields = (error as { errors?: Record<string, string> } | undefined)?.errors ?? {};
-        throw new DonorValidationError(problemMessage(error, 'Some fields are invalid.'), fields);
-      }
-      throw new Error(problemMessage(error, 'The donor was not saved.'));
+      throw saveError(response, error, 'The donor was not saved.');
     },
     // The list and the counts both change; "people" too, because a donor is also a person in the registry
     onSuccess: () =>
@@ -95,5 +81,33 @@ export function useRegisterDonor() {
         queryClient.invalidateQueries({ queryKey: ['donors'] }),
         queryClient.invalidateQueries({ queryKey: ['people'] }),
       ]),
+  });
+}
+
+/**
+ * Saves the donor form (PUT, Day 49) with both versions it read: the donor's and the person's. The core's
+ * EditConflictError if either was saved by someone else in between, ValidationError for refused fields.
+ */
+export function useEditDonor(donorId: string) {
+  const api = useNgoApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (donor: NgoSchemas['EditDonorRequest']) => {
+      const { data, error, response } = await api.PUT('/api/v1/donors/{donorId}', {
+        params: { path: { donorId } },
+        body: donor,
+      });
+      if (data) return data;
+      throw saveError(response, error, 'The changes were not saved.');
+    },
+    onSuccess: (donor) => {
+      queryClient.setQueryData(['donors', 'one', donorId], donor);
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['donors', 'list'] }),
+        queryClient.invalidateQueries({ queryKey: ['donors', 'counts'] }),
+        queryClient.invalidateQueries({ queryKey: ['people'] }),
+        queryClient.invalidateQueries({ queryKey: ['audit'] }),
+      ]);
+    },
   });
 }

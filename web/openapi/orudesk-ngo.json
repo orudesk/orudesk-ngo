@@ -928,6 +928,10 @@
       "DonorDetails" : {
         "type" : "object",
         "properties" : {
+          "dateOfBirth" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
+          },
           "email" : {
             "type" : [ "string", "null" ]
           },

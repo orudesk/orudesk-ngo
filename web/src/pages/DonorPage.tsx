@@ -19,11 +19,21 @@ export function DonorPage() {
       {donor.data === null && <Title order={1}>Donor not found</Title>}
       {donor.data && (
         <>
-          <Group>
-            <Title order={1}>{name}</Title>
-            <Badge variant="light" tt="none">
-              {typeLabel(donor.data.type)}
-            </Badge>
+          <Group justify="space-between" maw={640}>
+            <Group>
+              <Title order={1}>{name}</Title>
+              <Badge variant="light" tt="none">
+                {typeLabel(donor.data.type)}
+              </Badge>
+            </Group>
+            <Group gap="md">
+              <Anchor component={Link} to={`/donors/${donor.data.id}/edit`} size="sm">
+                Edit
+              </Anchor>
+              <Anchor component={Link} to={`/activity?subject=${donor.data.id}`} size="sm">
+                History
+              </Anchor>
+            </Group>
           </Group>
           <Card withBorder maw={640}>
             <SimpleGrid cols={{ base: 1, xs: 2 }} spacing="md" component="dl" m={0}>

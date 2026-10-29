@@ -404,6 +404,8 @@ export interface components {
       wantingTaxReceipts: number;
     };
     DonorDetails: {
+      /** Format: date */
+      dateOfBirth?: string | null;
       email?: string | null;
       firstName: string;
       /** Format: uuid */

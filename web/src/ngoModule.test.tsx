@@ -124,4 +124,84 @@ describe('the NGO edition', () => {
       receivesUpdates: false,
     });
   });
+
+  describe('editing a donor', () => {
+    const meera = {
+      id: 'd2',
+      personId: 'p2',
+      firstName: 'Meera',
+      lastName: 'Iyer',
+      dateOfBirth: '1980-05-01',
+      phone: '+91 98450 12345',
+      email: null,
+      type: 'INDIVIDUAL',
+      panMasked: 'XXXXXX234F',
+      wantsTaxReceipt: true,
+      receivesUpdates: false,
+      registeredOn: '2026-10-01',
+      version: 3,
+      personVersion: 7,
+    };
+
+    it('sends both versions, keeps the PAN when left empty, and shows the saved donor', async () => {
+      const api = openAt('/donors/d2/edit', {
+        'GET /api/v1/donors/d2': () => json(meera),
+        'PUT /api/v1/donors/d2': () =>
+          json({ ...meera, type: 'CORPORATE', version: 4, personVersion: 7 }),
+      });
+
+      await userEvent.click(await screen.findByRole('combobox', { name: 'Type' }));
+      await userEvent.click(await screen.findByRole('option', { name: 'Corporate', hidden: true }));
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(await screen.findByRole('heading', { name: 'Meera Iyer' })).toBeInTheDocument();
+      expect(window.location.pathname).toBe('/donors/d2');
+      const sent = api.requests.find((r) => r.method === 'PUT')!;
+      expect(await sent.json()).toEqual({
+        version: 3,
+        personVersion: 7,
+        firstName: 'Meera',
+        lastName: 'Iyer',
+        dateOfBirth: '1980-05-01',
+        phone: '+91 98450 12345',
+        email: null,
+        type: 'CORPORATE',
+        pan: null,
+        wantsTaxReceipt: true,
+        receivesUpdates: false,
+      });
+    });
+
+    it('sends an empty PAN to remove it', async () => {
+      const api = openAt('/donors/d2/edit', {
+        'GET /api/v1/donors/d2': () => json(meera),
+        'PUT /api/v1/donors/d2': () => json({ ...meera, panMasked: null, wantsTaxReceipt: false }),
+      });
+
+      await userEvent.click(await screen.findByLabelText('Remove the PAN'));
+      await userEvent.click(screen.getByLabelText('Wants 80G tax receipts'));
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await screen.findByRole('heading', { name: 'Meera Iyer' });
+      const sent = (await api.requests.find((r) => r.method === 'PUT')!.json()) as {
+        pan: string | null;
+        wantsTaxReceipt: boolean;
+      };
+      expect(sent.pan).toBe('');
+      expect(sent.wantsTaxReceipt).toBe(false);
+    });
+
+    it('offers a reload when someone else saved first', async () => {
+      openAt('/donors/d2/edit', {
+        'GET /api/v1/donors/d2': () => json(meera),
+        'PUT /api/v1/donors/d2': () =>
+          json({ title: 'Edit conflict', detail: 'donor d2 was changed', currentVersion: 4 }, 409),
+      });
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Changed by someone else');
+      expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
+    });
+  });
 });

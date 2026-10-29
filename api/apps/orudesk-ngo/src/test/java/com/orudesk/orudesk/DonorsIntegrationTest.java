@@ -60,7 +60,8 @@ class DonorsIntegrationTest {
                 .andExpect(jsonPath("$.firstName").value("Meera"))      // from the People registry
                 .andExpect(jsonPath("$.type").value("INDIVIDUAL"))                // the default
                 .andExpect(jsonPath("$.panMasked").value("XXXXXX234F"))
-                .andExpect(jsonPath("$.receivesUpdates").value(true));
+                .andExpect(jsonPath("$.receivesUpdates").value(true))
+                .andExpect(jsonPath("$.dateOfBirth").value("1980-05-01"));   // the edit form sends it back
     }
 
     @Test
@@ -216,7 +217,7 @@ class DonorsIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"version": %d, "personVersion": %d, "firstName": "Meera", "lastName": "Test-Iyer",
-                         "phone": "%s", %s}
+                         "dateOfBirth": "1980-05-01", "phone": "%s", %s}
                         """.formatted(version, personVersion, phone, donorFields)));
     }
 
@@ -225,7 +226,7 @@ class DonorsIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"firstName": "%s", "lastName": "Test-Iyer", "phone": "+91 98450 12345",
-                                 "pan": "%s", "receivesUpdates": true}
+                                 "dateOfBirth": "1980-05-01", "pan": "%s", "receivesUpdates": true}
                                 """.formatted(firstName, pan)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();

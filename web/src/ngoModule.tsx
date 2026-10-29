@@ -17,6 +17,10 @@ export const ngoModule: OrudeskModule = {
       lazy: async () => ({ Component: (await import('./pages/NewDonorPage')).NewDonorPage }),
     },
     {
+      path: '/donors/:donorId/edit',
+      lazy: async () => ({ Component: (await import('./pages/EditDonorPage')).EditDonorPage }),
+    },
+    {
       path: '/donors/:donorId',
       lazy: async () => ({ Component: (await import('./pages/DonorPage')).DonorPage }),
     },

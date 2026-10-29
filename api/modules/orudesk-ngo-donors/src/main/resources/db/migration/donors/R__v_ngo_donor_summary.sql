@@ -22,7 +22,8 @@ SELECT d.id,
        d.receives_updates,
        d.registered_on,
        d.version,                                     -- Day 49: an edit sends back both versions it read,
-       p.version AS person_version                    -- so the form gets them in one read
+       p.version AS person_version,                   -- so the form gets them in one read
+       p.date_of_birth                                -- the edit form sends the whole person back
 FROM ngo_donor d
          -- the tenant in the join as well: a donor can never be shown with another tenant's person
          JOIN party_person p ON p.id = d.person_id AND p.tenant_id = d.tenant_id;

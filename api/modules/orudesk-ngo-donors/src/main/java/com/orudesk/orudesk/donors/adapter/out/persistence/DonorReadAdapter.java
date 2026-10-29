@@ -32,7 +32,7 @@ class DonorReadAdapter implements ReadDonorsPort {
     public Optional<DonorDetails> findDetails(DonorId id) {
         return Optional.ofNullable(entityManager.find(DonorSummaryJpaEntity.class, id.value()))
                 .map(row -> new DonorDetails(row.getId(), row.getPersonId(), row.getFirstName(), row.getLastName(),
-                        row.getPhone(), row.getEmail(), row.getDonorType(), row.getPanMasked(),
+                        row.getDateOfBirth(), row.getPhone(), row.getEmail(), row.getDonorType(), row.getPanMasked(),
                         row.isWantsTaxReceipt(), row.isReceivesUpdates(), row.getRegisteredOn(),
                         row.getVersion(), row.getPersonVersion()));
     }

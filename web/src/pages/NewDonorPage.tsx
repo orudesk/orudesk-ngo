@@ -1,16 +1,16 @@
 import { Alert, Button, Checkbox, Group, Select, Stack, TextInput, Title } from '@mantine/core';
-import { usePageTitle } from '@orudesk/web-core';
+import { usePageTitle, ValidationError } from '@orudesk/web-core';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { NgoSchemas } from '../api';
-import { DONOR_TYPES, DonorValidationError, useRegisterDonor, type DonorType } from '../donors';
+import { DONOR_TYPES, useRegisterDonor, type DonorType } from '../donors';
 
 /** Add a donor, and with them a person in the core's registry. The server checks everything. */
 export function NewDonorPage() {
   usePageTitle('Add donor');
   const register = useRegisterDonor();
   const navigate = useNavigate();
-  const fieldErrors = register.error instanceof DonorValidationError ? register.error.fields : {};
+  const fieldErrors = register.error instanceof ValidationError ? register.error.fields : {};
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -36,7 +36,7 @@ export function NewDonorPage() {
   return (
     <Stack maw={520}>
       <Title order={1}>Add donor</Title>
-      {register.isError && !(register.error instanceof DonorValidationError) && (
+      {register.isError && !(register.error instanceof ValidationError) && (
         <Alert color="red" role="alert" title="Not saved">
           {register.error.message}
         </Alert>

@@ -11,7 +11,8 @@ import java.util.UUID;
  *
  * @param version       the donor's version, and personVersion the person's: an edit sends both back (Day 49)
  */
-public record DonorDetails(UUID id, UUID personId, String firstName, String lastName, @Nullable String phone, @Nullable String email,
+public record DonorDetails(UUID id, UUID personId, String firstName, String lastName, @Nullable LocalDate dateOfBirth,
+                           @Nullable String phone, @Nullable String email,
                            DonorType type, @Nullable String panMasked, boolean wantsTaxReceipt, boolean receivesUpdates,
                            LocalDate registeredOn, long version, long personVersion) {
 }
