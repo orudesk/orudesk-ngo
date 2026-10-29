@@ -1,6 +1,19 @@
-import { Anchor, Badge, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import {
+  Anchor,
+  Badge,
+  Button,
+  Card,
+  Group,
+  Loader,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from '@mantine/core';
 import { formatDate, usePageTitle } from '@orudesk/web-core';
 import { Link, useParams } from 'react-router';
+import { modeLabel, useDonorDonations } from '../donations';
 import { typeLabel, useDonor } from '../donors';
 
 export function DonorPage() {
@@ -49,7 +62,67 @@ export function DonorPage() {
           <Anchor component={Link} to={`/people/${donor.data.personId}`} size="sm">
             Their entry in the People registry
           </Anchor>
+          <Donations donorId={donor.data.id} />
         </>
+      )}
+    </Stack>
+  );
+}
+
+/** What the donor gave (Day 60): each donation links to its receipt; cancelled ones stay, struck through. */
+function Donations({ donorId }: { donorId: string }) {
+  const donations = useDonorDonations(donorId);
+  return (
+    <Stack maw={640} gap="xs">
+      <Group justify="space-between">
+        <Title order={2} size="h3">
+          Donations
+        </Title>
+        <Button component={Link} to={`/donors/${donorId}/donations/new`} size="xs">
+          Record a donation
+        </Button>
+      </Group>
+      {donations.isPending && <Loader size="sm" aria-label="Loading donations" />}
+      {donations.isError && <Text role="alert">{donations.error.message}</Text>}
+      {donations.data && donations.data.donations.length === 0 && (
+        <Text c="dimmed">No donations yet.</Text>
+      )}
+      {donations.data && donations.data.donations.length > 0 && (
+        <Table aria-label="Donations">
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Received</Table.Th>
+              <Table.Th>Receipt</Table.Th>
+              <Table.Th>Paid by</Table.Th>
+              <Table.Th ta="right">Amount</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {donations.data.donations.map((d) => (
+              <Table.Tr key={d.id} td={d.cancelledOn ? 'line-through' : undefined}>
+                <Table.Td>{formatDate(d.receivedOn)}</Table.Td>
+                <Table.Td>
+                  <Anchor component={Link} to={`/donations/${d.id}/receipt`}>
+                    {d.receiptNumber}
+                  </Anchor>
+                  {d.cancelledOn && (
+                    <Badge color="red" variant="light" ml="xs">
+                      Cancelled
+                    </Badge>
+                  )}
+                </Table.Td>
+                <Table.Td>{modeLabel(d.mode)}</Table.Td>
+                <Table.Td ta="right">{d.amountFormatted}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+          <Table.Tfoot>
+            <Table.Tr>
+              <Table.Th colSpan={3}>Total</Table.Th>
+              <Table.Th ta="right">{donations.data.totalFormatted}</Table.Th>
+            </Table.Tr>
+          </Table.Tfoot>
+        </Table>
       )}
     </Stack>
   );

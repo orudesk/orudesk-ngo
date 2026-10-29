@@ -204,4 +204,163 @@ describe('the NGO edition', () => {
       expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
     });
   });
+
+  describe('donations', () => {
+    const ravi = {
+      id: 'd3',
+      personId: 'p3',
+      firstName: 'Ravi',
+      lastName: 'Shah',
+      dateOfBirth: null,
+      phone: null,
+      email: null,
+      type: 'INDIVIDUAL',
+      panMasked: 'XXXXXX234F',
+      wantsTaxReceipt: true,
+      receivesUpdates: false,
+      registeredOn: '2026-10-01',
+      version: 0,
+      personVersion: 0,
+    };
+    const donation = {
+      id: 'g1',
+      donorId: 'd3',
+      donorName: 'Ravi Shah',
+      amount: '150000.00',
+      amountFormatted: '₹1,50,000.00',
+      receivedOn: '2026-10-28',
+      mode: 'UPI',
+      reference: 'UPI123',
+      purpose: null,
+      receiptNumber: '2026-27/000001',
+      cancelledOn: null,
+      cancelReason: null,
+      version: 0,
+    };
+    const receipt = {
+      donationId: 'g1',
+      receiptNumber: '2026-27/000001',
+      financialYear: '2026-27',
+      issuedOn: '2026-10-28',
+      organisationName: 'Helping Hands Trust',
+      organisationAddress: 'Pune',
+      organisationPan: 'AAATH1234C',
+      registration80G: 'AAATH1234CF20214',
+      donorName: 'Ravi Shah',
+      donorPan: 'ABCDE1234F',
+      amount: '150000.00',
+      amountFormatted: '₹1,50,000.00',
+      amountInWords: 'Rupees One Lakh Fifty Thousand Only',
+      receivedOn: '2026-10-28',
+      mode: 'UPI',
+      reference: 'UPI123',
+      purpose: null,
+      taxDeductible: true,
+      notDeductibleBecause: '',
+      cancelledOn: null,
+      cancelReason: null,
+    };
+
+    it("lists a donor's donations with their receipts and the total", async () => {
+      openAt('/donors/d3', {
+        'GET /api/v1/donors/d3': () => json(ravi),
+        'GET /api/v1/donors/d3/donations': () =>
+          json({ donations: [donation], total: '150000.00', totalFormatted: '₹1,50,000.00' }),
+      });
+
+      const table = await screen.findByRole('table', { name: 'Donations' });
+      expect(within(table).getByRole('link', { name: '2026-27/000001' })).toHaveAttribute(
+        'href',
+        '/donations/g1/receipt',
+      );
+      expect(within(table).getAllByText('₹1,50,000.00')).toHaveLength(2); // the row and the total
+      expect(screen.getByRole('link', { name: 'Record a donation' })).toHaveAttribute(
+        'href',
+        '/donors/d3/donations/new',
+      );
+    });
+
+    it('records a donation, sending the amount as typed without commas, and opens its receipt', async () => {
+      const api = openAt('/donors/d3/donations/new', {
+        'GET /api/v1/donors/d3': () => json(ravi),
+        'POST /api/v1/donations': () => json({ id: 'g1' }, 201),
+        'GET /api/v1/donations/g1/receipt': () => json(receipt),
+        'GET /api/v1/donations/g1': () => json(donation),
+      });
+
+      await userEvent.type(await screen.findByLabelText(/Amount/), '1,50,000.00');
+      await userEvent.type(screen.getByLabelText(/UPI transaction id/), 'UPI123');
+      await userEvent.click(screen.getByRole('button', { name: 'Save and show receipt' }));
+
+      expect(await screen.findByText('Rupees One Lakh Fifty Thousand Only')).toBeInTheDocument();
+      expect(window.location.pathname).toBe('/donations/g1/receipt');
+      const sent = (await api.requests
+        .find((r) => r.method === 'POST' && r.url.endsWith('/donations'))!
+        .json()) as {
+        amount: string;
+        mode: string;
+        reference: string;
+      };
+      expect(sent).toMatchObject({
+        donorId: 'd3',
+        amount: '150000.00',
+        mode: 'UPI',
+        reference: 'UPI123',
+      });
+    });
+
+    it('cancels a donation with the version that was read and a reason', async () => {
+      let cancelled = false;
+      const api = openAt('/donations/g1/receipt', {
+        'GET /api/v1/donations/g1/receipt': () =>
+          json(
+            cancelled
+              ? { ...receipt, cancelledOn: '2026-10-29', cancelReason: 'Cheque bounced' }
+              : receipt,
+          ),
+        'GET /api/v1/donations/g1': () => json(donation),
+        'POST /api/v1/donations/g1/cancel': () => {
+          cancelled = true;
+          return json({
+            ...donation,
+            cancelledOn: '2026-10-29',
+            cancelReason: 'Cheque bounced',
+            version: 1,
+          });
+        },
+      });
+
+      await userEvent.type(await screen.findByLabelText(/Reason/), 'Cheque bounced');
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel donation' }));
+
+      expect(await screen.findByText(/Cancelled on .*Cheque bounced/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Cancel donation' })).not.toBeInTheDocument();
+      const sent = await api.requests.find((r) => r.url.endsWith('/cancel'))!.json();
+      expect(sent).toEqual({ version: 0, reason: 'Cheque bounced' });
+    });
+
+    it('shows the year by month and by mode', async () => {
+      openAt('/donations/reports', {
+        'GET /api/v1/donations/summary': () =>
+          json({
+            financialYear: '2026-27',
+            total: '150000.00',
+            totalFormatted: '₹1,50,000.00',
+            count: 1,
+            cancelledCount: 0,
+            byMonth: [
+              { key: '2026-04', count: 0, total: '0.00' },
+              { key: '2026-10', count: 1, total: '150000.00' },
+            ],
+            byMode: [{ key: 'UPI', count: 1, total: '150000.00' }],
+          }),
+      });
+
+      expect(await screen.findByText('Oct 2026')).toBeInTheDocument();
+      const byMode = screen.getByRole('table', { name: 'By payment mode' });
+      expect(within(byMode).getByText('UPI')).toBeInTheDocument();
+      expect(within(byMode).getByText('₹1,50,000.00')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Donation reports' })).toBeInTheDocument();
+    });
+  });
 });

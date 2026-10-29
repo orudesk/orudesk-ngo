@@ -1,0 +1,19 @@
+/* Printing a receipt prints the receipt only: not the app's header, menu or buttons (Day 60). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt,
+  .receipt * {
+    visibility: visible;
+  }
+  .receipt {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
