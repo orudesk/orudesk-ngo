@@ -8,7 +8,8 @@ import java.util.UUID;
 
 /**
  * Money a donor gave (Day 56). Immutable: a donation is a fact. A mistake is put right by cancelling it (Day 58)
- * and recording the right one, so the books always show what happened.
+ * and recording the right one, so the books always show what happened. A cancelled donation keeps its receipt
+ * number: the series has no gap, and the receipt says CANCELLED.
  */
 public final class Donation {
 
@@ -27,11 +28,12 @@ public final class Donation {
     private final @Nullable String purpose;
     private final @Nullable ReceiptNumber receiptNumber;   // null only between record() and issueReceipt()
     private final @Nullable LocalDate receiptIssuedOn;
+    private final @Nullable Cancellation cancellation;     // null: it stands
     private final long version;
 
     private Donation(DonationId id, UUID donorId, Amount amount, LocalDate receivedOn, PaymentMode mode,
                      @Nullable String reference, @Nullable String purpose, @Nullable ReceiptNumber receiptNumber,
-                     @Nullable LocalDate receiptIssuedOn, long version) {
+                     @Nullable LocalDate receiptIssuedOn, @Nullable Cancellation cancellation, long version) {
         this.id = Objects.requireNonNull(id);
         this.donorId = Objects.requireNonNull(donorId, "a donation always has a donor");
         this.amount = Objects.requireNonNull(amount);
@@ -41,6 +43,7 @@ public final class Donation {
         this.purpose = blankToNull(purpose);
         this.receiptNumber = receiptNumber;
         this.receiptIssuedOn = receiptIssuedOn;
+        this.cancellation = cancellation;
         this.version = version;
     }
 
@@ -60,15 +63,15 @@ public final class Donation {
             throw new IllegalArgumentException("a " + mode.name().toLowerCase().replace('_', ' ')
                     + " payment needs its reference (cheque number, UTR or transaction id)");
         }
-        return new Donation(DonationId.newId(), donorId, amount, receivedOn, mode, reference, purpose, null, null, 0);
+        return new Donation(DonationId.newId(), donorId, amount, receivedOn, mode, reference, purpose, null, null, null, 0);
     }
 
     /** For the persistence adapter: rebuilds a donation that already exists. */
     public static Donation restore(DonationId id, UUID donorId, Amount amount, LocalDate receivedOn, PaymentMode mode,
                                    @Nullable String reference, @Nullable String purpose, ReceiptNumber receiptNumber,
-                                   LocalDate receiptIssuedOn, long version) {
+                                   LocalDate receiptIssuedOn, @Nullable Cancellation cancellation, long version) {
         return new Donation(id, donorId, amount, receivedOn, mode, reference, purpose,
-                Objects.requireNonNull(receiptNumber), Objects.requireNonNull(receiptIssuedOn), version);
+                Objects.requireNonNull(receiptNumber), Objects.requireNonNull(receiptIssuedOn), cancellation, version);
     }
 
     /** The financial year the money arrived in: its receipt is numbered in that year's series. */
@@ -89,7 +92,24 @@ public final class Donation {
         if (!number.year().equals(financialYear())) {
             throw new IllegalArgumentException("receipt " + number + " is not from " + financialYear());
         }
-        return new Donation(id, donorId, amount, receivedOn, mode, reference, purpose, number, today, version);
+        return new Donation(id, donorId, amount, receivedOn, mode, reference, purpose, number, today, null, version);
+    }
+
+    /**
+     * Cancels the donation (Day 58). It stays in the books, with its receipt number, marked cancelled.
+     *
+     * @throws DonationAlreadyCancelledException if it already is: cancelling twice would hide the first reason
+     */
+    public Donation cancel(Cancellation why) {
+        if (cancellation != null) {
+            throw new DonationAlreadyCancelledException(id);
+        }
+        return new Donation(id, donorId, amount, receivedOn, mode, reference, purpose, receiptNumber, receiptIssuedOn,
+                Objects.requireNonNull(why), version);
+    }
+
+    public boolean isCancelled() {
+        return cancellation != null;
     }
 
     private static @Nullable String blankToNull(@Nullable String text) {
@@ -105,5 +125,6 @@ public final class Donation {
     public @Nullable String purpose() { return purpose; }
     public @Nullable ReceiptNumber receiptNumber() { return receiptNumber; }
     public @Nullable LocalDate receiptIssuedOn() { return receiptIssuedOn; }
+    public @Nullable Cancellation cancellation() { return cancellation; }
     public long version() { return version; }
 }

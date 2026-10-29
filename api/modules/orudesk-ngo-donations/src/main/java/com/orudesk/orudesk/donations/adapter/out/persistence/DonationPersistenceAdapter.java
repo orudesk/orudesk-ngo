@@ -3,10 +3,12 @@ package com.orudesk.orudesk.donations.adapter.out.persistence;
 import com.orudesk.orudesk.donations.application.port.out.LoadDonationPort;
 import com.orudesk.orudesk.donations.application.port.out.SaveDonationPort;
 import com.orudesk.orudesk.donations.domain.Amount;
+import com.orudesk.orudesk.donations.domain.Cancellation;
 import com.orudesk.orudesk.donations.domain.Donation;
 import com.orudesk.orudesk.donations.domain.DonationId;
 import com.orudesk.orudesk.donations.domain.FinancialYear;
 import com.orudesk.orudesk.donations.domain.ReceiptNumber;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -34,6 +36,18 @@ class DonationPersistenceAdapter implements SaveDonationPort, LoadDonationPort {
     }
 
     @Override
+    public void update(Donation donation) {
+        DonationJpaEntity row = donations.findById(donation.id().value())
+                .orElseThrow(() -> new IllegalStateException("updating a donation that isn't there: " + donation.id().value()));
+        if (row.getVersion() != donation.version()) {
+            throw new ObjectOptimisticLockingFailureException(DonationJpaEntity.class, donation.id().value());
+        }
+        Cancellation cancellation = Objects.requireNonNull(donation.cancellation(), "only a cancellation is written");
+        row.cancel(cancellation.on(), cancellation.reason());
+        donations.flush();   // UPDATE ... WHERE version = ?: a lost race throws here, inside the service's transaction
+    }
+
+    @Override
     public Optional<Donation> findById(DonationId id) {
         return donations.findById(id.value()).map(DonationPersistenceAdapter::toDomain);
     }
@@ -54,6 +68,8 @@ class DonationPersistenceAdapter implements SaveDonationPort, LoadDonationPort {
         return Donation.restore(new DonationId(row.getId()), row.getDonorId(), new Amount(row.getAmount()),
                 row.getReceivedOn(), row.getMode(), row.getReference(), row.getPurpose(),
                 new ReceiptNumber(FinancialYear.parse(row.getFinancialYear()), row.getReceiptSequence()),
-                row.getReceiptIssuedOn(), row.getVersion());
+                row.getReceiptIssuedOn(),
+                row.getCancelledOn() == null ? null : new Cancellation(row.getCancelledOn(), row.getCancelReason()),
+                row.getVersion());
     }
 }

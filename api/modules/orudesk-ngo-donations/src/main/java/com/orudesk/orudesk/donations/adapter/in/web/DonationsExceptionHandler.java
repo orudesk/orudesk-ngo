@@ -1,5 +1,6 @@
 package com.orudesk.orudesk.donations.adapter.in.web;
 
+import com.orudesk.orudesk.donations.domain.DonationAlreadyCancelledException;
 import com.orudesk.orudesk.donations.domain.DonationNotFoundException;
 import com.orudesk.orudesk.donations.domain.UnknownDonorException;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,13 @@ class DonationsExceptionHandler {
     ProblemDetail donationNotFound(DonationNotFoundException e) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
         problem.setTitle("Donation not found");
+        return problem;
+    }
+
+    @ExceptionHandler(DonationAlreadyCancelledException.class)
+    ProblemDetail alreadyCancelled(DonationAlreadyCancelledException e) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+        problem.setTitle("Donation already cancelled");
         return problem;
     }
 

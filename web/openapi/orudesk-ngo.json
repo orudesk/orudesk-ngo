@@ -332,6 +332,45 @@
         "tags" : [ "Donations" ]
       }
     },
+    "/api/v1/donations/{donationId}/cancel" : {
+      "post" : {
+        "description" : "Send the version you read. 409 if the donation changed since, or is already cancelled.",
+        "operationId" : "cancelDonation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "donationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CancelDonationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DonationDetails"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Cancel a donation (a bounced cheque, a duplicate entry)",
+        "tags" : [ "Donations" ]
+      }
+    },
     "/api/v1/donations/{donationId}/receipt" : {
       "get" : {
         "operationId" : "getDonationReceipt",
@@ -1031,6 +1070,21 @@
         },
         "required" : [ "items" ]
       },
+      "CancelDonationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "reason", "version" ]
+      },
       "ConfirmPasswordResetRequest" : {
         "type" : "object",
         "properties" : {
@@ -1091,6 +1145,13 @@
           "amountFormatted" : {
             "type" : "string"
           },
+          "cancelReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "cancelledOn" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
+          },
           "donorId" : {
             "type" : "string",
             "format" : "uuid"
@@ -1117,9 +1178,13 @@
           },
           "reference" : {
             "type" : [ "string", "null" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         },
-        "required" : [ "amount", "amountFormatted", "donorId", "donorName", "id", "mode", "receiptNumber", "receivedOn" ]
+        "required" : [ "amount", "amountFormatted", "donorId", "donorName", "id", "mode", "receiptNumber", "receivedOn", "version" ]
       },
       "DonationReceipt" : {
         "type" : "object",
@@ -1132,6 +1197,13 @@
           },
           "amountInWords" : {
             "type" : "string"
+          },
+          "cancelReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "cancelledOn" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
           },
           "donationId" : {
             "type" : "string",

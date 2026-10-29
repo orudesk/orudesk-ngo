@@ -1,17 +1,23 @@
 package com.orudesk.orudesk;
 
 import com.jayway.jsonpath.JsonPath;
+import com.orudesk.orudesk.shared.EmailMessage;
+import com.orudesk.orudesk.shared.RecordingEmailSender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +28,7 @@ import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -35,8 +42,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "orudesk.ngo.registration-80g=AAATA1234AF20214"
 })
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, DonationsIntegrationTest.Mail.class})
 class DonationsIntegrationTest {
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class Mail {
+        @Bean
+        @Primary
+        RecordingEmailSender recordingEmailSender() {
+            return new RecordingEmailSender();
+        }
+    }
+
+    @Autowired
+    private RecordingEmailSender mail;
 
     @Autowired
     private MockMvc mockMvc;
@@ -46,6 +65,9 @@ class DonationsIntegrationTest {
 
     @AfterEach
     void cleanUp() {
+        // The receipt emails run after the commit, on another thread: let them finish before the rows go
+        await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.queryForObject(
+                "SELECT COUNT(*) FROM event_publication WHERE completion_date IS NULL", Integer.class) == 0);
         jdbc.update("DELETE FROM ngo_donation");
         jdbc.update("DELETE FROM ngo_receipt_counter");
         jdbc.update("DELETE FROM ngo_donor");
@@ -153,6 +175,47 @@ class DonationsIntegrationTest {
     }
 
     @Test
+    void aCancelledDonationLeavesTheTotalButKeepsItsReceiptNumber() throws Exception {
+        String token = admin();
+        String donor = donor(token);
+        recordDonation(token, donor, "\"1000\"", "UPI", "\"UTR-1\"").andExpect(status().isCreated());
+        String cheque = recordDonation(token, donor, "\"5000\"", "CHEQUE", "\"004512\"").andReturn().getResponse()
+                .getHeader("Location");
+
+        cancel(token, cheque, 1, "cheque bounced").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Edit conflict"));   // version 1 was never read
+        cancel(token, cheque, 0, "cheque bounced").andExpect(status().isOk())
+                .andExpect(jsonPath("$.cancelReason").value("cheque bounced"))
+                .andExpect(jsonPath("$.receiptNumber").value(org.hamcrest.Matchers.endsWith("/000002")));
+        cancel(token, cheque, 1, "again").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Donation already cancelled"));
+
+        mockMvc.perform(get("/api/v1/donors/{id}/donations", donor).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.donations.length()").value(2))
+                .andExpect(jsonPath("$.total").value("1000.00"));
+        mockMvc.perform(get(cheque + "/receipt").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.cancelReason").value("cheque bounced"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_entry WHERE action = 'donations.donation.cancelled'"
+                + " AND summary LIKE '%cheque bounced%'", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void theDonorIsThankedByEmailWithTheReceipt() throws Exception {
+        String token = admin();
+        String donor = donor(token);
+        recordDonation(token, donor, "\"2500\"", "UPI", "\"UTR-77\"").andExpect(status().isCreated());
+
+        // Every test's donor has this address, and the recorder keeps every email: find this donation's
+        await().atMost(Duration.ofSeconds(10)).until(() -> mail.sentTo("asha@example.org").stream()
+                .anyMatch(m -> m.text().contains("₹2,500.00")));
+        EmailMessage email = mail.sentTo("asha@example.org").stream()
+                .filter(m -> m.text().contains("₹2,500.00")).findFirst().orElseThrow();
+        assertThat(email.subject()).startsWith("Thank you: receipt ");
+        assertThat(email.text()).contains("Asha Kiran Trust", "₹2,500.00", "Rupees Two Thousand Five Hundred Only",
+                "section 80G", "ABCDE1234F");
+    }
+
+    @Test
     void anUnknownDonorIsNotFound() throws Exception {
         recordDonation(admin(), UUID.randomUUID().toString(), "\"100\"", "CASH", "null")
                 .andExpect(status().isNotFound())
@@ -181,6 +244,12 @@ class DonationsIntegrationTest {
                 .content("""
                         {"donorId": "%s", "amount": %s, "receivedOn": "%s", "mode": "%s", "reference": %s}
                         """.formatted(donorId, amount, receivedOn, mode, reference)));
+    }
+
+    private ResultActions cancel(String token, String location, int version, String reason) throws Exception {
+        return mockMvc.perform(post(location + "/cancel").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"version\": %d, \"reason\": \"%s\"}".formatted(version, reason)));
     }
 
     private String receiptNumberOf(String token, ResultActions created) throws Exception {

@@ -54,6 +54,12 @@ class DonationJpaEntity {
     @Column(name = "receipt_issued_on", nullable = false, updatable = false)
     private LocalDate receiptIssuedOn;
 
+    @Column(name = "cancelled_on")
+    private @Nullable LocalDate cancelledOn;
+
+    @Column(name = "cancel_reason", length = 200)
+    private @Nullable String cancelReason;
+
     @Version
     private Long version;
 
@@ -86,5 +92,14 @@ class DonationJpaEntity {
     String getFinancialYear() { return financialYear; }
     int getReceiptSequence() { return receiptSequence; }
     LocalDate getReceiptIssuedOn() { return receiptIssuedOn; }
+    @Nullable LocalDate getCancelledOn() { return cancelledOn; }
+    @Nullable String getCancelReason() { return cancelReason; }
+
+    /** The only change a donation allows (Day 58). */
+    void cancel(LocalDate on, String reason) {
+        this.cancelledOn = on;
+        this.cancelReason = reason;
+    }
+
     long getVersion() { return version == null ? 0 : version; }
 }

@@ -1,5 +1,8 @@
 package com.orudesk.orudesk.donations.application.service;
 
+import com.orudesk.orudesk.donations.application.port.in.CancelDonationCommand;
+import com.orudesk.orudesk.donations.application.port.in.CancelDonationUseCase;
+import com.orudesk.orudesk.donations.application.port.in.DonationCancelled;
 import com.orudesk.orudesk.donations.application.port.in.DonationDetails;
 import com.orudesk.orudesk.donations.application.port.in.DonationReceipt;
 import com.orudesk.orudesk.donations.application.port.in.DonationRecorded;
@@ -12,6 +15,7 @@ import com.orudesk.orudesk.donations.application.port.out.OrganisationDetails;
 import com.orudesk.orudesk.donations.application.port.out.ReceiptNumbers;
 import com.orudesk.orudesk.donations.application.port.out.SaveDonationPort;
 import com.orudesk.orudesk.donations.domain.Amount;
+import com.orudesk.orudesk.donations.domain.Cancellation;
 import com.orudesk.orudesk.donations.domain.Donation;
 import com.orudesk.orudesk.donations.domain.DonationId;
 import com.orudesk.orudesk.donations.domain.DonationNotFoundException;
@@ -22,6 +26,7 @@ import com.orudesk.orudesk.donations.domain.TaxDeduction;
 import com.orudesk.orudesk.donations.domain.UnknownDonorException;
 import com.orudesk.orudesk.donors.application.port.in.DonorForReceipt;
 import com.orudesk.orudesk.donors.application.port.in.DonorReceiptQuery;
+import com.orudesk.orudesk.shared.EditConflictException;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +38,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Service
-class DonationService implements RecordDonationUseCase, GetDonationQuery {
+class DonationService implements RecordDonationUseCase, GetDonationQuery, CancelDonationUseCase {
 
     private final DonorReceiptQuery donors;
     private final SaveDonationPort saveDonationPort;
@@ -77,6 +82,21 @@ class DonationService implements RecordDonationUseCase, GetDonationQuery {
     }
 
     @Override
+    @Transactional
+    public DonationDetails cancel(CancelDonationCommand command) {
+        DonationId id = new DonationId(command.donationId());
+        Donation current = loadDonationPort.findById(id).orElseThrow(() -> new DonationNotFoundException(id));
+        if (current.version() != command.version()) {
+            throw new EditConflictException("donation", id.value(), command.version(), current.version());
+        }
+        Donation cancelled = current.cancel(new Cancellation(LocalDate.now(clock), command.reason()));
+        saveDonationPort.update(cancelled);
+        events.publishEvent(new DonationCancelled(id.value(), Objects.requireNonNull(cancelled.receiptNumber()).value(),
+                cancelled.amount().formatted(), Objects.requireNonNull(cancelled.cancellation()).reason()));
+        return getDonation(id.value());
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public DonationDetails getDonation(UUID donationId) {
         DonationId id = new DonationId(donationId);
@@ -101,7 +121,9 @@ class DonationService implements RecordDonationUseCase, GetDonationQuery {
                 deduction.eligible() ? donor.pan() : null,
                 donation.amount().plain(), donation.amount().formatted(), RupeesInWords.of(donation.amount()),
                 donation.receivedOn(), donation.mode().name(), donation.reference(), donation.purpose(),
-                deduction.eligible(), deduction.reason());
+                deduction.eligible(), deduction.reason(),
+                donation.cancellation() == null ? null : donation.cancellation().on(),
+                donation.cancellation() == null ? null : donation.cancellation().reason());
     }
 
     @Override
@@ -126,6 +148,8 @@ class DonationService implements RecordDonationUseCase, GetDonationQuery {
     private static DonationDetails details(Donation donation, String donorName) {
         return new DonationDetails(donation.id().value(), donation.donorId(), donorName, donation.amount().plain(),
                 donation.amount().formatted(), donation.receivedOn(), donation.mode().name(), donation.reference(),
-                donation.purpose(), Objects.requireNonNull(donation.receiptNumber()).value());
+                donation.purpose(), Objects.requireNonNull(donation.receiptNumber()).value(),
+                donation.cancellation() == null ? null : donation.cancellation().on(),
+                donation.cancellation() == null ? null : donation.cancellation().reason(), donation.version());
     }
 }

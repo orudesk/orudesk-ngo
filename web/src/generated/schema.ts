@@ -174,6 +174,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/donations/{donationId}/cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel a donation (a bounced cheque, a duplicate entry)
+     * @description Send the version you read. 409 if the donation changed since, or is already cancelled.
+     */
+    post: operations['cancelDonation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/donations/{donationId}/receipt': {
     parameters: {
       query?: never;
@@ -486,6 +506,11 @@ export interface components {
       items: components['schemas']['AuditEntryDetails'][];
       nextCursor?: string | null;
     };
+    CancelDonationRequest: {
+      reason: string;
+      /** Format: int64 */
+      version: number;
+    };
     ConfirmPasswordResetRequest: {
       newPassword: string;
       token: string;
@@ -504,6 +529,9 @@ export interface components {
     DonationDetails: {
       amount: string;
       amountFormatted: string;
+      cancelReason?: string | null;
+      /** Format: date */
+      cancelledOn?: string | null;
       /** Format: uuid */
       donorId: string;
       donorName: string;
@@ -515,11 +543,16 @@ export interface components {
       /** Format: date */
       receivedOn: string;
       reference?: string | null;
+      /** Format: int64 */
+      version: number;
     };
     DonationReceipt: {
       amount: string;
       amountFormatted: string;
       amountInWords: string;
+      cancelReason?: string | null;
+      /** Format: date */
+      cancelledOn?: string | null;
       /** Format: uuid */
       donationId: string;
       donorName: string;
@@ -999,6 +1032,32 @@ export interface operations {
       cookie?: never;
     };
     requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DonationDetails'];
+        };
+      };
+    };
+  };
+  cancelDonation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        donationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CancelDonationRequest'];
+      };
+    };
     responses: {
       /** @description OK */
       200: {

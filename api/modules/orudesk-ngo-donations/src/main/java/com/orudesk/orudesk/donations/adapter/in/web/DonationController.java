@@ -1,5 +1,7 @@
 package com.orudesk.orudesk.donations.adapter.in.web;
 
+import com.orudesk.orudesk.donations.application.port.in.CancelDonationCommand;
+import com.orudesk.orudesk.donations.application.port.in.CancelDonationUseCase;
 import com.orudesk.orudesk.donations.application.port.in.DonationDetails;
 import com.orudesk.orudesk.donations.application.port.in.DonationReceipt;
 import com.orudesk.orudesk.donations.application.port.in.DonorDonations;
@@ -28,10 +30,13 @@ import java.util.UUID;
 class DonationController {
 
     private final RecordDonationUseCase recordDonation;
+    private final CancelDonationUseCase cancelDonation;
     private final GetDonationQuery getDonation;
 
-    DonationController(RecordDonationUseCase recordDonation, GetDonationQuery getDonation) {
+    DonationController(RecordDonationUseCase recordDonation, CancelDonationUseCase cancelDonation,
+                       GetDonationQuery getDonation) {
         this.recordDonation = recordDonation;
+        this.cancelDonation = cancelDonation;
         this.getDonation = getDonation;
     }
 
@@ -48,6 +53,14 @@ class DonationController {
     @Operation(operationId = "getDonation", summary = "One donation")
     DonationDetails get(@PathVariable UUID donationId) {
         return getDonation.getDonation(donationId);
+    }
+
+    /** An action, not a DELETE: the donation stays, marked cancelled, with its receipt number (Day 58). */
+    @PostMapping("/api/v1/donations/{donationId}/cancel")
+    @Operation(operationId = "cancelDonation", summary = "Cancel a donation (a bounced cheque, a duplicate entry)",
+            description = "Send the version you read. 409 if the donation changed since, or is already cancelled.")
+    DonationDetails cancel(@PathVariable UUID donationId, @Valid @RequestBody CancelDonationRequest request) {
+        return cancelDonation.cancel(new CancelDonationCommand(donationId, request.version(), request.reason()));
     }
 
     @GetMapping("/api/v1/donations/{donationId}/receipt")

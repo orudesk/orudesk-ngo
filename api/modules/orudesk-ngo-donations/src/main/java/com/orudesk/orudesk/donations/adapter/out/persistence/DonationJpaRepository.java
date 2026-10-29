@@ -12,7 +12,10 @@ interface DonationJpaRepository extends JpaRepository<DonationJpaEntity, UUID> {
     /** Same day: the one recorded later first, so the list doesn't jump around between two loads. */
     List<DonationJpaEntity> findByDonorIdOrderByReceivedOnDescIdDesc(UUID donorId);
 
-    /** SUM in the database, in NUMERIC: exact, and one number over the wire instead of every row. NULL: none. */
-    @Query("SELECT SUM(d.amount) FROM DonationJpaEntity d WHERE d.donorId = :donorId")
+    /**
+     * SUM in the database, in NUMERIC: exact, and one number over the wire instead of every row. NULL: none.
+     * Cancelled donations don't count (Day 58).
+     */
+    @Query("SELECT SUM(d.amount) FROM DonationJpaEntity d WHERE d.donorId = :donorId AND d.cancelledOn IS NULL")
     BigDecimal sumByDonor(UUID donorId);
 }

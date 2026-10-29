@@ -40,4 +40,19 @@ class DonationTest {
         assertThatThrownBy(() -> Donation.record(DONOR, Amount.rupees(500), TODAY.plusDays(1), PaymentMode.UPI, "UTR1", null, TODAY))
                 .hasMessageContaining("future");
     }
+
+    @Test
+    void aCancelledDonationKeepsItsReceiptAndCantBeCancelledTwice() {
+        Donation donation = Donation.record(DONOR, Amount.rupees(5000), TODAY, PaymentMode.CHEQUE, "004512", null, TODAY)
+                .issueReceipt(new ReceiptNumber(new FinancialYear(2026), 3), TODAY);
+
+        Donation cancelled = donation.cancel(new Cancellation(TODAY, "  cheque bounced "));
+
+        assertThat(cancelled.isCancelled()).isTrue();
+        assertThat(cancelled.cancellation().reason()).isEqualTo("cheque bounced");
+        assertThat(cancelled.receiptNumber()).isEqualTo(donation.receiptNumber());
+        assertThatThrownBy(() -> cancelled.cancel(new Cancellation(TODAY, "again")))
+                .isInstanceOf(DonationAlreadyCancelledException.class);
+        assertThatThrownBy(() -> new Cancellation(TODAY, " ")).hasMessageContaining("say why");
+    }
 }

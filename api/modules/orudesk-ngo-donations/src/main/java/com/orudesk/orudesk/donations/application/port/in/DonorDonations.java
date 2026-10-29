@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Everything one donor gave, newest first, and the total.
  *
- * @param total "12500.00": added up by the database, in NUMERIC, never in floating point
+ * @param total "12500.00": added up by the database, in NUMERIC, never in floating point; cancelled ones left out
  */
 public record DonorDonations(List<DonationDetails> donations, String total, String totalFormatted) {
 
