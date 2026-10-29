@@ -1,6 +1,13 @@
 spring:
   application:
     name: orudesk-ngo
+  modulith:
+    events:
+      # Stuck this long in one state: marked FAILED, so the core's retry picks it up (core Day 54)
+      staleness:
+        published: 15m
+        processing: 15m
+        resubmitted: 15m
 
   # Java 21+ virtual threads: each request gets a cheap virtual thread instead of one from Tomcat's pool of 200.
   threads:
@@ -43,12 +50,28 @@ orudesk:
     first-admin:
       email: ${ORUDESK_ADMIN_EMAIL:}
       password: ${ORUDESK_ADMIN_PASSWORD:}
+    # How long a password reset link works (core Day 53)
+    password-reset:
+      ttl: ${ORUDESK_PASSWORD_RESET_TTL:30m}
   security:
     jwt:
       # The key that signs access tokens. At least 32 characters, never committed: set it in .env.
       secret: ${ORUDESK_JWT_SECRET}
       access-token-ttl: 15m
       refresh-token-ttl: 14d
+  # The outbox (core Days 51 and 54): completed work kept a week; failed work retried 1, 2, 4... minutes apart
+  events:
+    keep-completed: ${ORUDESK_EVENTS_KEEP_COMPLETED:7d}
+    retry:
+      first-backoff: ${ORUDESK_EVENTS_RETRY_FIRST_BACKOFF:1m}
+      max-attempts: ${ORUDESK_EVENTS_RETRY_MAX_ATTEMPTS:10}
+  web:
+    # Where the web app is, for links in emails (welcome, password reset), without a trailing slash
+    base-url: ${ORUDESK_WEB_BASE_URL:http://localhost:5173}
+  mail:
+    # Who emails come from. The server is spring.mail.host / port / username / password (SPRING_MAIL_HOST...):
+    # without a host, emails are written to the log instead of sent.
+    from: ${ORUDESK_MAIL_FROM:Orudesk <no-reply@orudesk.local>}
 
 # Actuator: the same probes as the core's standard edition (see its application.yml for the why).
 management:
