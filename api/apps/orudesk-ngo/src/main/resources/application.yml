@@ -56,6 +56,10 @@ orudesk:
     # How long a password reset link works (core Day 53)
     password-reset:
       ttl: ${ORUDESK_PASSWORD_RESET_TTL:30m}
+    # Two-factor sign-in: the key that encrypts authenticator app secrets, 32 bytes in base64
+    # (openssl rand -base64 32). Empty: two-factor sign-in is not offered. Keep it as safe as the database backups.
+    mfa:
+      key: ${ORUDESK_MFA_KEY:}
   security:
     jwt:
       # The key that signs access tokens. At least 32 characters, never committed: set it in .env.
