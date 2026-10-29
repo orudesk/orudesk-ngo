@@ -157,6 +157,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/donations/form-10bd': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The year's 80G-deductible donations as CSV, for Form 10BD */
+    get: operations['exportForm10BD'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/donations/summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A financial year's donations by month and by payment mode */
+    get: operations['summariseDonations'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/donations/{donationId}': {
     parameters: {
       query?: never;
@@ -573,6 +607,17 @@ export interface components {
       registration80G?: string | null;
       taxDeductible: boolean;
     };
+    DonationSummary: {
+      byMode: components['schemas']['Line'][];
+      byMonth: components['schemas']['Line'][];
+      /** Format: int64 */
+      cancelledCount: number;
+      /** Format: int64 */
+      count: number;
+      financialYear: string;
+      total: string;
+      totalFormatted: string;
+    };
     DonorCount: {
       /** Format: int64 */
       donors: number;
@@ -662,6 +707,12 @@ export interface components {
       /** Format: uuid */
       orgUnitId?: string | null;
       role: string;
+    };
+    Line: {
+      /** Format: int64 */
+      count: number;
+      key: string;
+      total: string;
     };
     LoginRequest: {
       /** Format: email */
@@ -1018,6 +1069,50 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RecordDonationResponse'];
+        };
+      };
+    };
+  };
+  exportForm10BD: {
+    parameters: {
+      query: {
+        financialYear: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The CSV file */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'text/csv': string;
+        };
+      };
+    };
+  };
+  summariseDonations: {
+    parameters: {
+      query: {
+        financialYear: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DonationSummary'];
         };
       };
     };

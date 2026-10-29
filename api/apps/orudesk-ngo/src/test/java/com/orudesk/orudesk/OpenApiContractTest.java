@@ -37,7 +37,7 @@ class OpenApiContractTest {
         List<String> operationIds = JsonPath.read(json, "$.paths.*.*.operationId");
         assertThat(operationIds)
                 .doesNotHaveDuplicates()
-                .allMatch(id -> id.matches("[a-z][a-zA-Z]+"), "camelCase, and no springdoc suffix like register_1")
+                .allMatch(id -> id.matches("[a-z][a-zA-Z0-9]+"), "camelCase (digits allowed: exportForm10BD), no springdoc suffix like register_1")
                 .contains("login", "searchPeople", "registerDonor", "searchDonors", "countDonors", "getDonor");
 
         // The JSpecify nullability converter comes from the core, and works for the vertical's records too

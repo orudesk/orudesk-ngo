@@ -304,6 +304,60 @@
         "tags" : [ "Donations" ]
       }
     },
+    "/api/v1/donations/form-10bd" : {
+      "get" : {
+        "operationId" : "exportForm10BD",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "financialYear",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/csv" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "The CSV file"
+          }
+        },
+        "summary" : "The year's 80G-deductible donations as CSV, for Form 10BD",
+        "tags" : [ "Donations" ]
+      }
+    },
+    "/api/v1/donations/summary" : {
+      "get" : {
+        "operationId" : "summariseDonations",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "financialYear",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DonationSummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "A financial year's donations by month and by payment mode",
+        "tags" : [ "Donations" ]
+      }
+    },
     "/api/v1/donations/{donationId}" : {
       "get" : {
         "operationId" : "getDonation",
@@ -1259,6 +1313,41 @@
         },
         "required" : [ "amount", "amountFormatted", "amountInWords", "donationId", "donorName", "financialYear", "issuedOn", "mode", "notDeductibleBecause", "organisationName", "receiptNumber", "receivedOn", "taxDeductible" ]
       },
+      "DonationSummary" : {
+        "type" : "object",
+        "properties" : {
+          "byMode" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Line"
+            }
+          },
+          "byMonth" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Line"
+            }
+          },
+          "cancelledCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "financialYear" : {
+            "type" : "string"
+          },
+          "total" : {
+            "type" : "string"
+          },
+          "totalFormatted" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "byMode", "byMonth", "cancelledCount", "count", "financialYear", "total", "totalFormatted" ]
+      },
       "DonorCount" : {
         "type" : "object",
         "properties" : {
@@ -1512,6 +1601,22 @@
           }
         },
         "required" : [ "role" ]
+      },
+      "Line" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "total" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "count", "key", "total" ]
       },
       "LoginRequest" : {
         "type" : "object",

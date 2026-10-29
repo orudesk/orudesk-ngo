@@ -216,6 +216,61 @@ class DonationsIntegrationTest {
     }
 
     @Test
+    void theYearIsSummedByMonthAndModeWithoutTheCancelledOnes() throws Exception {
+        String token = admin();
+        String donor = donor(token);
+        LocalDate today = LocalDate.now();
+        String year = financialYear(today);
+        recordDonation(token, donor, "\"1000.25\"", "UPI", "\"U1\"").andExpect(status().isCreated());
+        recordDonation(token, donor, "\"500\"", "CASH", "null").andExpect(status().isCreated());
+        String bounced = recordDonation(token, donor, "\"9000\"", "CHEQUE", "\"C1\"").andReturn().getResponse()
+                .getHeader("Location");
+        cancel(token, bounced, 0, "bounced").andExpect(status().isOk());
+
+        String month = today.toString().substring(0, 7);
+        mockMvc.perform(get("/api/v1/donations/summary").param("financialYear", year)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value("1500.25"))
+                .andExpect(jsonPath("$.count").value(2))
+                .andExpect(jsonPath("$.cancelledCount").value(1))
+                .andExpect(jsonPath("$.byMonth.length()").value(12))
+                .andExpect(jsonPath("$.byMonth[0].key").value(year.substring(0, 4) + "-04"))
+                .andExpect(jsonPath("$.byMonth[?(@.key == '" + month + "')].total").value("1500.25"))
+                .andExpect(jsonPath("$.byMode[0].key").value("UPI"));
+        mockMvc.perform(get("/api/v1/donations/summary").param("financialYear", "2026-28")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void form10BDListsTheDeductibleDonationsSafelyAsCsv() throws Exception {
+        String token = admin();
+        String asha = donor(token);
+        String formula = donor(token, "=cmd", "Test-Gift", "PQRST6789Z", true);
+        String noReceipt = donor(token, "Ravi", "Test-Gift", "LMNOP4321Q", false);
+        recordDonation(token, asha, "\"1000\"", "UPI", "\"U1\"").andExpect(status().isCreated());
+        recordDonation(token, asha, "\"2500\"", "BANK_TRANSFER", "\"N1\"").andExpect(status().isCreated());
+        recordDonation(token, asha, "\"1500\"", "CASH", "null").andExpect(status().isCreated());
+        recordDonation(token, asha, "\"5000\"", "CASH", "null").andExpect(status().isCreated());   // cash > 2000: not deductible
+        recordDonation(token, formula, "\"700\"", "CARD", "\"T1\"").andExpect(status().isCreated());
+        recordDonation(token, noReceipt, "\"900\"", "UPI", "\"U2\"").andExpect(status().isCreated());
+
+        String csv = mockMvc.perform(get("/api/v1/donations/form-10bd").param("financialYear", financialYear(LocalDate.now()))
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Content-Disposition", org.hamcrest.Matchers.containsString("form-10bd-")))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        assertThat(csv.split("\r\n")).containsExactly(
+                "Sr. No.,ID Code (PAN),Name of donor,Donation type,Mode of receipt,Amount of donation (INR)",
+                "1,PQRST6789Z,'=cmd Test-Gift,Others,Electronic modes including account payee cheque/draft,700.00",
+                "2,ABCDE1234F,Asha Test-Gift,Others,Electronic modes including account payee cheque/draft,3500.00",
+                "3,ABCDE1234F,Asha Test-Gift,Others,Cash,1500.00");
+    }
+
+    @Test
     void anUnknownDonorIsNotFound() throws Exception {
         recordDonation(admin(), UUID.randomUUID().toString(), "\"100\"", "CASH", "null")
                 .andExpect(status().isNotFound())
@@ -265,12 +320,17 @@ class DonationsIntegrationTest {
     }
 
     private String donor(String token) throws Exception {
+        return donor(token, "Asha", "Test-Gift", "ABCDE1234F", true);
+    }
+
+    private String donor(String token, String firstName, String lastName, String pan, boolean wantsTaxReceipt)
+            throws Exception {
         String json = mockMvc.perform(post("/api/v1/donors").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"firstName": "Asha", "lastName": "Test-Gift", "email": "asha@example.org",
-                                 "pan": "ABCDE1234F", "wantsTaxReceipt": true}
-                                """))
+                                {"firstName": "%s", "lastName": "%s", "email": "asha@example.org",
+                                 "pan": "%s", "wantsTaxReceipt": %s}
+                                """.formatted(firstName, lastName, pan, wantsTaxReceipt)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(json, "$.id");
