@@ -45,6 +45,15 @@ class DonationJpaEntity {
     @Column(length = 100)
     private @Nullable String purpose;
 
+    @Column(name = "financial_year", nullable = false, updatable = false, length = 7)
+    private String financialYear;
+
+    @Column(name = "receipt_sequence", nullable = false, updatable = false)
+    private int receiptSequence;
+
+    @Column(name = "receipt_issued_on", nullable = false, updatable = false)
+    private LocalDate receiptIssuedOn;
+
     @Version
     private Long version;
 
@@ -53,7 +62,8 @@ class DonationJpaEntity {
     }
 
     DonationJpaEntity(UUID id, UUID donorId, BigDecimal amount, LocalDate receivedOn, PaymentMode mode,
-                      @Nullable String reference, @Nullable String purpose) {
+                      @Nullable String reference, @Nullable String purpose, String financialYear, int receiptSequence,
+                      LocalDate receiptIssuedOn) {
         this.id = id;
         this.donorId = donorId;
         this.amount = amount;
@@ -61,6 +71,9 @@ class DonationJpaEntity {
         this.mode = mode;
         this.reference = reference;
         this.purpose = purpose;
+        this.financialYear = financialYear;
+        this.receiptSequence = receiptSequence;
+        this.receiptIssuedOn = receiptIssuedOn;
     }
 
     UUID getId() { return id; }
@@ -70,5 +83,8 @@ class DonationJpaEntity {
     PaymentMode getMode() { return mode; }
     @Nullable String getReference() { return reference; }
     @Nullable String getPurpose() { return purpose; }
+    String getFinancialYear() { return financialYear; }
+    int getReceiptSequence() { return receiptSequence; }
+    LocalDate getReceiptIssuedOn() { return receiptIssuedOn; }
     long getVersion() { return version == null ? 0 : version; }
 }

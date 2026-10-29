@@ -332,6 +332,34 @@
         "tags" : [ "Donations" ]
       }
     },
+    "/api/v1/donations/{donationId}/receipt" : {
+      "get" : {
+        "operationId" : "getDonationReceipt",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "donationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DonationReceipt"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "A donation's receipt, with the amount in words and whether it's 80G-deductible",
+        "tags" : [ "Donations" ]
+      }
+    },
     "/api/v1/donors" : {
       "get" : {
         "operationId" : "searchDonors",
@@ -1080,6 +1108,9 @@
           "purpose" : {
             "type" : [ "string", "null" ]
           },
+          "receiptNumber" : {
+            "type" : "string"
+          },
           "receivedOn" : {
             "type" : "string",
             "format" : "date"
@@ -1088,7 +1119,73 @@
             "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "amount", "amountFormatted", "donorId", "donorName", "id", "mode", "receivedOn" ]
+        "required" : [ "amount", "amountFormatted", "donorId", "donorName", "id", "mode", "receiptNumber", "receivedOn" ]
+      },
+      "DonationReceipt" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "string"
+          },
+          "amountFormatted" : {
+            "type" : "string"
+          },
+          "amountInWords" : {
+            "type" : "string"
+          },
+          "donationId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "donorName" : {
+            "type" : "string"
+          },
+          "donorPan" : {
+            "type" : [ "string", "null" ]
+          },
+          "financialYear" : {
+            "type" : "string"
+          },
+          "issuedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "mode" : {
+            "type" : "string"
+          },
+          "notDeductibleBecause" : {
+            "type" : "string"
+          },
+          "organisationAddress" : {
+            "type" : [ "string", "null" ]
+          },
+          "organisationName" : {
+            "type" : "string"
+          },
+          "organisationPan" : {
+            "type" : [ "string", "null" ]
+          },
+          "purpose" : {
+            "type" : [ "string", "null" ]
+          },
+          "receiptNumber" : {
+            "type" : "string"
+          },
+          "receivedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "reference" : {
+            "type" : [ "string", "null" ]
+          },
+          "registration80G" : {
+            "type" : [ "string", "null" ]
+          },
+          "taxDeductible" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "amount", "amountFormatted", "amountInWords", "donationId", "donorName", "financialYear", "issuedOn", "mode", "notDeductibleBecause", "organisationName", "receiptNumber", "receivedOn", "taxDeductible" ]
       },
       "DonorCount" : {
         "type" : "object",

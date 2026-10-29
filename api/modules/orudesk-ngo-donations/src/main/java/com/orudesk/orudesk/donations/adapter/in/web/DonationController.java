@@ -1,6 +1,7 @@
 package com.orudesk.orudesk.donations.adapter.in.web;
 
 import com.orudesk.orudesk.donations.application.port.in.DonationDetails;
+import com.orudesk.orudesk.donations.application.port.in.DonationReceipt;
 import com.orudesk.orudesk.donations.application.port.in.DonorDonations;
 import com.orudesk.orudesk.donations.application.port.in.GetDonationQuery;
 import com.orudesk.orudesk.donations.application.port.in.RecordDonationCommand;
@@ -47,6 +48,12 @@ class DonationController {
     @Operation(operationId = "getDonation", summary = "One donation")
     DonationDetails get(@PathVariable UUID donationId) {
         return getDonation.getDonation(donationId);
+    }
+
+    @GetMapping("/api/v1/donations/{donationId}/receipt")
+    @Operation(operationId = "getDonationReceipt", summary = "A donation's receipt, with the amount in words and whether it's 80G-deductible")
+    DonationReceipt receipt(@PathVariable UUID donationId) {
+        return getDonation.receiptFor(donationId);
     }
 
     @GetMapping("/api/v1/donors/{donorId}/donations")

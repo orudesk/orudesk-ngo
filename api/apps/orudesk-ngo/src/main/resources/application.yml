@@ -65,6 +65,13 @@ orudesk:
     retry:
       first-backoff: ${ORUDESK_EVENTS_RETRY_FIRST_BACKOFF:1m}
       max-attempts: ${ORUDESK_EVENTS_RETRY_MAX_ATTEMPTS:10}
+  # The NGO's own details, printed on every donation receipt (Day 57)
+  ngo:
+    name: ${ORUDESK_NGO_NAME:Orudesk NGO}
+    address: ${ORUDESK_NGO_ADDRESS:}
+    pan: ${ORUDESK_NGO_PAN:}
+    # The 80G approval number. Empty: receipts say donations are not tax-deductible.
+    registration-80g: ${ORUDESK_NGO_REGISTRATION_80G:}
   web:
     # Where the web app is, for links in emails (welcome, password reset), without a trailing slash
     base-url: ${ORUDESK_WEB_BASE_URL:http://localhost:5173}

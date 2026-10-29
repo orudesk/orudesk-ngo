@@ -13,7 +13,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,7 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** Day 56: donations through the whole NGO app, against PostgreSQL. */
 @SpringBootTest(properties = {
         "orudesk.identity.first-admin.email=test-admin@orudesk.org",
-        "orudesk.identity.first-admin.password=admin-password"
+        "orudesk.identity.first-admin.password=admin-password",
+        "orudesk.ngo.name=Asha Kiran Trust",
+        "orudesk.ngo.registration-80g=AAATA1234AF20214"
 })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -39,6 +47,7 @@ class DonationsIntegrationTest {
     @AfterEach
     void cleanUp() {
         jdbc.update("DELETE FROM ngo_donation");
+        jdbc.update("DELETE FROM ngo_receipt_counter");
         jdbc.update("DELETE FROM ngo_donor");
         jdbc.update("DELETE FROM party_person WHERE last_name = 'Test-Gift'");
     }
@@ -76,9 +85,71 @@ class DonationsIntegrationTest {
 
         // Whoever writes the row, the database refuses the same cash
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> jdbc.update("""
-                INSERT INTO ngo_donation (id, tenant_id, donor_id, amount, received_on, mode)
-                VALUES (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', ?, 250000, CURRENT_DATE, 'CASH')
+                INSERT INTO ngo_donation (id, tenant_id, donor_id, amount, received_on, mode,
+                                          financial_year, receipt_sequence, receipt_issued_on)
+                VALUES (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', ?, 250000, CURRENT_DATE, 'CASH',
+                        '2026-27', 999, CURRENT_DATE)
                 """, UUID.fromString(donor))).hasMessageContaining("ck_ngo_donation_cash_limit");
+    }
+
+    @Test
+    void receiptsAreNumberedWithoutGapsPerFinancialYear() throws Exception {
+        String token = admin();
+        String donor = donor(token);
+        LocalDate today = LocalDate.now();
+        String thisYear = financialYear(today);
+        String lastYear = financialYear(today.minusYears(1));
+
+        String first = receiptNumberOf(token, recordDonation(token, donor, "\"100\"", "CASH", "null", today));
+        String older = receiptNumberOf(token, recordDonation(token, donor, "\"100\"", "CASH", "null", today.minusYears(1)));
+        String second = receiptNumberOf(token, recordDonation(token, donor, "\"100\"", "CASH", "null", today));
+
+        assertThat(first).isEqualTo(thisYear + "/000001");
+        assertThat(second).isEqualTo(thisYear + "/000002");
+        assertThat(older).isEqualTo(lastYear + "/000001");   // last year's series, by the date the money came
+    }
+
+    @Test
+    void twentyReceiptsAtOnceGetTwentyDifferentNumbersAndNoGap() throws Exception {
+        String token = admin();
+        String donor = donor(token);
+        ExecutorService pool = Executors.newFixedThreadPool(10);
+        try {
+            List<Future<Integer>> results = new ArrayList<>();
+            for (int i = 0; i < 20; i++) {
+                results.add(pool.submit(() -> recordDonation(token, donor, "\"100\"", "CASH", "null")
+                        .andReturn().getResponse().getStatus()));
+            }
+            for (Future<Integer> result : results) {
+                assertThat(result.get()).isEqualTo(201);
+            }
+        } finally {
+            pool.shutdown();
+        }
+
+        assertThat(jdbc.queryForList("SELECT receipt_sequence FROM ngo_donation ORDER BY receipt_sequence", Integer.class))
+                .isEqualTo(IntStream.rangeClosed(1, 20).boxed().toList());
+    }
+
+    @Test
+    void theReceiptShowsThePanOnlyWhenItIsDeductible() throws Exception {
+        String token = admin();
+        String donor = donor(token);
+        String upi = recordDonation(token, donor, "\"150000.50\"", "UPI", "\"UTR-9\"").andReturn().getResponse()
+                .getHeader("Location");
+        String cash = recordDonation(token, donor, "\"5000\"", "CASH", "null").andReturn().getResponse()
+                .getHeader("Location");
+
+        mockMvc.perform(get(upi + "/receipt").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.organisationName").value("Asha Kiran Trust"))
+                .andExpect(jsonPath("$.amountInWords").value("Rupees One Lakh Fifty Thousand and Fifty Paise Only"))
+                .andExpect(jsonPath("$.taxDeductible").value(true))
+                .andExpect(jsonPath("$.donorPan").value("ABCDE1234F"));
+        mockMvc.perform(get(cash + "/receipt").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.taxDeductible").value(false))
+                .andExpect(jsonPath("$.notDeductibleBecause").value(org.hamcrest.Matchers.containsString("cash above")))
+                .andExpect(jsonPath("$.donorPan").doesNotExist());
     }
 
     @Test
@@ -100,11 +171,28 @@ class DonationsIntegrationTest {
 
     private ResultActions recordDonation(String token, String donorId, String amount, String mode, String reference)
             throws Exception {
+        return recordDonation(token, donorId, amount, mode, reference, LocalDate.now());
+    }
+
+    private ResultActions recordDonation(String token, String donorId, String amount, String mode, String reference,
+                                         LocalDate receivedOn) throws Exception {
         return mockMvc.perform(post("/api/v1/donations").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"donorId": "%s", "amount": %s, "receivedOn": "%s", "mode": "%s", "reference": %s}
-                        """.formatted(donorId, amount, LocalDate.now(), mode, reference)));
+                        """.formatted(donorId, amount, receivedOn, mode, reference)));
+    }
+
+    private String receiptNumberOf(String token, ResultActions created) throws Exception {
+        String location = created.andExpect(status().isCreated()).andReturn().getResponse().getHeader("Location");
+        String json = mockMvc.perform(get(location).header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(json, "$.receiptNumber");
+    }
+
+    private static String financialYear(LocalDate date) {
+        int start = date.getMonthValue() >= 4 ? date.getYear() : date.getYear() - 1;
+        return start + "-" + String.format("%02d", (start + 1) % 100);
     }
 
     private String donor(String token) throws Exception {

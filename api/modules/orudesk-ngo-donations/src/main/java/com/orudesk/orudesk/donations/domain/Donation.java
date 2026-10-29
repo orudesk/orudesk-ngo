@@ -25,10 +25,13 @@ public final class Donation {
     private final PaymentMode mode;
     private final @Nullable String reference;
     private final @Nullable String purpose;
+    private final @Nullable ReceiptNumber receiptNumber;   // null only between record() and issueReceipt()
+    private final @Nullable LocalDate receiptIssuedOn;
     private final long version;
 
     private Donation(DonationId id, UUID donorId, Amount amount, LocalDate receivedOn, PaymentMode mode,
-                     @Nullable String reference, @Nullable String purpose, long version) {
+                     @Nullable String reference, @Nullable String purpose, @Nullable ReceiptNumber receiptNumber,
+                     @Nullable LocalDate receiptIssuedOn, long version) {
         this.id = Objects.requireNonNull(id);
         this.donorId = Objects.requireNonNull(donorId, "a donation always has a donor");
         this.amount = Objects.requireNonNull(amount);
@@ -36,6 +39,8 @@ public final class Donation {
         this.mode = Objects.requireNonNull(mode);
         this.reference = blankToNull(reference);
         this.purpose = blankToNull(purpose);
+        this.receiptNumber = receiptNumber;
+        this.receiptIssuedOn = receiptIssuedOn;
         this.version = version;
     }
 
@@ -55,13 +60,36 @@ public final class Donation {
             throw new IllegalArgumentException("a " + mode.name().toLowerCase().replace('_', ' ')
                     + " payment needs its reference (cheque number, UTR or transaction id)");
         }
-        return new Donation(DonationId.newId(), donorId, amount, receivedOn, mode, reference, purpose, 0);
+        return new Donation(DonationId.newId(), donorId, amount, receivedOn, mode, reference, purpose, null, null, 0);
     }
 
     /** For the persistence adapter: rebuilds a donation that already exists. */
     public static Donation restore(DonationId id, UUID donorId, Amount amount, LocalDate receivedOn, PaymentMode mode,
-                                   @Nullable String reference, @Nullable String purpose, long version) {
-        return new Donation(id, donorId, amount, receivedOn, mode, reference, purpose, version);
+                                   @Nullable String reference, @Nullable String purpose, ReceiptNumber receiptNumber,
+                                   LocalDate receiptIssuedOn, long version) {
+        return new Donation(id, donorId, amount, receivedOn, mode, reference, purpose,
+                Objects.requireNonNull(receiptNumber), Objects.requireNonNull(receiptIssuedOn), version);
+    }
+
+    /** The financial year the money arrived in: its receipt is numbered in that year's series. */
+    public FinancialYear financialYear() {
+        return FinancialYear.of(receivedOn);
+    }
+
+    /**
+     * Gives the donation its receipt (Day 57), once.
+     *
+     * @throws IllegalStateException    if it already has one
+     * @throws IllegalArgumentException if the number is from another financial year's series
+     */
+    public Donation issueReceipt(ReceiptNumber number, LocalDate today) {
+        if (receiptNumber != null) {
+            throw new IllegalStateException("donation " + id.value() + " already has receipt " + receiptNumber);
+        }
+        if (!number.year().equals(financialYear())) {
+            throw new IllegalArgumentException("receipt " + number + " is not from " + financialYear());
+        }
+        return new Donation(id, donorId, amount, receivedOn, mode, reference, purpose, number, today, version);
     }
 
     private static @Nullable String blankToNull(@Nullable String text) {
@@ -75,5 +103,7 @@ public final class Donation {
     public PaymentMode mode() { return mode; }
     public @Nullable String reference() { return reference; }
     public @Nullable String purpose() { return purpose; }
+    public @Nullable ReceiptNumber receiptNumber() { return receiptNumber; }
+    public @Nullable LocalDate receiptIssuedOn() { return receiptIssuedOn; }
     public long version() { return version; }
 }

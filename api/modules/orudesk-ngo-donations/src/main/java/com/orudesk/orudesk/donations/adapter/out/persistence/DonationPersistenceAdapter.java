@@ -5,10 +5,13 @@ import com.orudesk.orudesk.donations.application.port.out.SaveDonationPort;
 import com.orudesk.orudesk.donations.domain.Amount;
 import com.orudesk.orudesk.donations.domain.Donation;
 import com.orudesk.orudesk.donations.domain.DonationId;
+import com.orudesk.orudesk.donations.domain.FinancialYear;
+import com.orudesk.orudesk.donations.domain.ReceiptNumber;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,9 +26,11 @@ class DonationPersistenceAdapter implements SaveDonationPort, LoadDonationPort {
 
     @Override
     public void save(Donation donation) {
+        ReceiptNumber receipt = Objects.requireNonNull(donation.receiptNumber(), "a donation is saved with its receipt");
         donations.saveAndFlush(new DonationJpaEntity(donation.id().value(), donation.donorId(),
                 donation.amount().value(), donation.receivedOn(), donation.mode(), donation.reference(),
-                donation.purpose()));
+                donation.purpose(), receipt.year().label(), receipt.sequence(),
+                Objects.requireNonNull(donation.receiptIssuedOn())));
     }
 
     @Override
@@ -47,6 +52,8 @@ class DonationPersistenceAdapter implements SaveDonationPort, LoadDonationPort {
 
     private static Donation toDomain(DonationJpaEntity row) {
         return Donation.restore(new DonationId(row.getId()), row.getDonorId(), new Amount(row.getAmount()),
-                row.getReceivedOn(), row.getMode(), row.getReference(), row.getPurpose(), row.getVersion());
+                row.getReceivedOn(), row.getMode(), row.getReference(), row.getPurpose(),
+                new ReceiptNumber(FinancialYear.parse(row.getFinancialYear()), row.getReceiptSequence()),
+                row.getReceiptIssuedOn(), row.getVersion());
     }
 }

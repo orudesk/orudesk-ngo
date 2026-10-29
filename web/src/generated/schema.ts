@@ -174,6 +174,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/donations/{donationId}/receipt': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A donation's receipt, with the amount in words and whether it's 80G-deductible */
+    get: operations['getDonationReceipt'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/donors': {
     parameters: {
       query?: never;
@@ -494,9 +511,34 @@ export interface components {
       id: string;
       mode: string;
       purpose?: string | null;
+      receiptNumber: string;
       /** Format: date */
       receivedOn: string;
       reference?: string | null;
+    };
+    DonationReceipt: {
+      amount: string;
+      amountFormatted: string;
+      amountInWords: string;
+      /** Format: uuid */
+      donationId: string;
+      donorName: string;
+      donorPan?: string | null;
+      financialYear: string;
+      /** Format: date */
+      issuedOn: string;
+      mode: string;
+      notDeductibleBecause: string;
+      organisationAddress?: string | null;
+      organisationName: string;
+      organisationPan?: string | null;
+      purpose?: string | null;
+      receiptNumber: string;
+      /** Format: date */
+      receivedOn: string;
+      reference?: string | null;
+      registration80G?: string | null;
+      taxDeductible: boolean;
     };
     DonorCount: {
       /** Format: int64 */
@@ -965,6 +1007,28 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['DonationDetails'];
+        };
+      };
+    };
+  };
+  getDonationReceipt: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        donationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DonationReceipt'];
         };
       };
     };
