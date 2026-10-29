@@ -7,12 +7,16 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import org.hibernate.annotations.TenantId;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
-/** One row of ngo_donor. Only ever written: reading goes through the summary view. */
+/**
+ * One row of ngo_donor. Shown through the summary view; read here only to be changed (Day 49), since the view
+ * has the PAN masked and the domain needs the real one.
+ */
 @Entity
 @Table(name = "ngo_donor")
 class DonorJpaEntity {
@@ -43,6 +47,9 @@ class DonorJpaEntity {
     @Column(name = "registered_on", nullable = false)
     private LocalDate registeredOn;
 
+    @Version   // optimistic locking, as in the core's PersonJpaEntity (Day 46); null until first saved
+    private Long version;
+
     protected DonorJpaEntity() {
         // JPA needs a no-argument constructor
     }
@@ -57,4 +64,20 @@ class DonorJpaEntity {
         this.receivesUpdates = receivesUpdates;
         this.registeredOn = registeredOn;
     }
+
+    void changeDetails(DonorType donorType, String pan, boolean wantsTaxReceipt, boolean receivesUpdates) {
+        this.donorType = donorType;
+        this.pan = pan;
+        this.wantsTaxReceipt = wantsTaxReceipt;
+        this.receivesUpdates = receivesUpdates;
+    }
+
+    UUID getId() { return id; }
+    UUID getPersonId() { return personId; }
+    DonorType getDonorType() { return donorType; }
+    String getPan() { return pan; }
+    boolean isWantsTaxReceipt() { return wantsTaxReceipt; }
+    boolean isReceivesUpdates() { return receivesUpdates; }
+    LocalDate getRegisteredOn() { return registeredOn; }
+    Long getVersion() { return version; }
 }

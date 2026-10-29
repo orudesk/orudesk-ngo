@@ -61,6 +61,11 @@ class DonorSummaryJpaEntity {
     @Column(name = "registered_on")
     private LocalDate registeredOn;
 
+    private long version;
+
+    @Column(name = "person_version")
+    private long personVersion;
+
     protected DonorSummaryJpaEntity() {
         // JPA needs a no-argument constructor
     }
@@ -76,4 +81,6 @@ class DonorSummaryJpaEntity {
     boolean isWantsTaxReceipt() { return wantsTaxReceipt; }
     boolean isReceivesUpdates() { return receivesUpdates; }
     LocalDate getRegisteredOn() { return registeredOn; }
+    long getVersion() { return version; }
+    long getPersonVersion() { return personVersion; }
 }

@@ -355,6 +355,43 @@
         },
         "summary" : "One donor, with their details from the registry",
         "tags" : [ "Donors" ]
+      },
+      "put" : {
+        "description" : "Send both versions you read. 409 if the donor or the person was changed since: reload and edit again. Leave pan out to keep it, send \"\" to remove it.",
+        "operationId" : "editDonor",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "donorId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EditDonorRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DonorDetails"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Change a donor's details",
+        "tags" : [ "Donors" ]
       }
     },
     "/api/v1/org-units" : {
@@ -528,6 +565,43 @@
         },
         "summary" : "One person",
         "tags" : [ "People" ]
+      },
+      "put" : {
+        "description" : "Send the version you read. 409 if the person was changed since: reload and edit again.",
+        "operationId" : "editPerson",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "personId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EditPersonRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PersonDetails"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Change a person's details",
+        "tags" : [ "People" ]
       }
     },
     "/api/v1/roles" : {
@@ -611,6 +685,48 @@
           }
         },
         "summary" : "The logged-in user's profile, roles and grants",
+        "tags" : [ "Users" ]
+      }
+    },
+    "/api/v1/users/{userId}/disable" : {
+      "post" : {
+        "operationId" : "disableUser",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "summary" : "Stop a user from logging in, and end their sessions",
+        "tags" : [ "Users" ]
+      }
+    },
+    "/api/v1/users/{userId}/enable" : {
+      "post" : {
+        "operationId" : "enableUser",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "userId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "summary" : "Let a disabled user log in again",
         "tags" : [ "Users" ]
       }
     },
@@ -711,6 +827,12 @@
             "type" : [ "string", "null" ],
             "format" : "uuid"
           },
+          "changes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FieldChange"
+            }
+          },
           "id" : {
             "type" : "string",
             "format" : "uuid"
@@ -733,7 +855,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "action", "id", "occurredAt", "subjectId", "subjectType", "summary" ]
+        "required" : [ "action", "changes", "id", "occurredAt", "subjectId", "subjectType", "summary" ]
       },
       "AuditPage" : {
         "type" : "object",
@@ -826,6 +948,10 @@
             "type" : "string",
             "format" : "uuid"
           },
+          "personVersion" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "phone" : {
             "type" : [ "string", "null" ]
           },
@@ -840,11 +966,15 @@
             "type" : "string",
             "enum" : [ "INDIVIDUAL", "CORPORATE", "FOUNDATION" ]
           },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "wantsTaxReceipt" : {
             "type" : "boolean"
           }
         },
-        "required" : [ "firstName", "id", "lastName", "personId", "receivesUpdates", "registeredOn", "type", "wantsTaxReceipt" ]
+        "required" : [ "firstName", "id", "lastName", "personId", "personVersion", "receivesUpdates", "registeredOn", "type", "version", "wantsTaxReceipt" ]
       },
       "DonorListItem" : {
         "type" : "object",
@@ -886,6 +1016,115 @@
           }
         },
         "required" : [ "items" ]
+      },
+      "EditDonorRequest" : {
+        "type" : "object",
+        "properties" : {
+          "dateOfBirth" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
+          },
+          "email" : {
+            "type" : [ "string", "null" ],
+            "format" : "email",
+            "maxLength" : 320,
+            "minLength" : 0
+          },
+          "firstName" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "lastName" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "pan" : {
+            "type" : [ "string", "null" ],
+            "pattern" : "^([A-Za-z]{5}[0-9]{4}[A-Za-z])?$"
+          },
+          "personVersion" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "phone" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 30,
+            "minLength" : 0
+          },
+          "receivesUpdates" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "type" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "INDIVIDUAL", "CORPORATE", "FOUNDATION" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "wantsTaxReceipt" : {
+            "type" : [ "boolean", "null" ]
+          }
+        },
+        "required" : [ "firstName", "lastName", "personVersion", "version" ]
+      },
+      "EditPersonRequest" : {
+        "type" : "object",
+        "properties" : {
+          "dateOfBirth" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
+          },
+          "email" : {
+            "type" : [ "string", "null" ],
+            "format" : "email",
+            "maxLength" : 320,
+            "minLength" : 0
+          },
+          "firstName" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "lastName" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "phone" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 30,
+            "minLength" : 0
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "firstName", "lastName", "version" ]
+      },
+      "FieldChange" : {
+        "type" : "object",
+        "properties" : {
+          "after" : {
+            "type" : [ "string", "null" ]
+          },
+          "before" : {
+            "type" : [ "string", "null" ]
+          },
+          "field" : {
+            "type" : "string"
+          },
+          "valuesHidden" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "field", "valuesHidden" ]
       },
       "Grant" : {
         "type" : "object",
@@ -962,9 +1201,13 @@
           },
           "phone" : {
             "type" : [ "string", "null" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         },
-        "required" : [ "firstName", "id", "lastName" ]
+        "required" : [ "firstName", "id", "lastName", "version" ]
       },
       "PersonPage" : {
         "type" : "object",

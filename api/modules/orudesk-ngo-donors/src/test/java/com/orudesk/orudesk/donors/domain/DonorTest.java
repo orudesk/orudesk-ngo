@@ -26,4 +26,18 @@ class DonorTest {
         assertThat(donor.wantsTaxReceipt()).isTrue();
         assertThat(donor.type()).isEqualTo(DonorType.CORPORATE);
     }
+
+    @Test
+    void changingDetailsKeepsTheRuleThatAReceiptNeedsAPan() {
+        Donor donor = Donor.register(UUID.randomUUID(), DonorType.INDIVIDUAL, new Pan("ABCDE1234F"), true, false, TODAY);
+
+        assertThatThrownBy(() -> donor.changeDetails(DonorType.INDIVIDUAL, null, true, false))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        Donor changed = donor.changeDetails(DonorType.FOUNDATION, null, false, true);
+        assertThat(changed.type()).isEqualTo(DonorType.FOUNDATION);
+        assertThat(changed.pan()).isNull();
+        assertThat(changed.id()).isEqualTo(donor.id());
+        assertThat(changed.version()).isEqualTo(donor.version());   // the database moves the version, not the domain
+    }
 }

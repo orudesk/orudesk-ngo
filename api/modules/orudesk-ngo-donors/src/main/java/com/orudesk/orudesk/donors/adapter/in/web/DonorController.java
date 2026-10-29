@@ -5,6 +5,8 @@ import com.orudesk.orudesk.donors.application.port.in.DonorCount;
 import com.orudesk.orudesk.donors.application.port.in.DonorDetails;
 import com.orudesk.orudesk.donors.application.port.in.DonorPage;
 import com.orudesk.orudesk.donors.application.port.in.DonorSearch;
+import com.orudesk.orudesk.donors.application.port.in.EditDonorCommand;
+import com.orudesk.orudesk.donors.application.port.in.EditDonorUseCase;
 import com.orudesk.orudesk.donors.application.port.in.GetDonorQuery;
 import com.orudesk.orudesk.donors.application.port.in.RegisterDonorCommand;
 import com.orudesk.orudesk.donors.application.port.in.RegisterDonorUseCase;
@@ -19,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,13 +38,15 @@ import java.util.UUID;
 class DonorController {
 
     private final RegisterDonorUseCase registerDonor;
+    private final EditDonorUseCase editDonor;
     private final GetDonorQuery getDonor;
     private final SearchDonorsQuery searchDonors;
     private final CountDonorsQuery countDonors;
 
-    DonorController(RegisterDonorUseCase registerDonor, GetDonorQuery getDonor, SearchDonorsQuery searchDonors,
-                    CountDonorsQuery countDonors) {
+    DonorController(RegisterDonorUseCase registerDonor, EditDonorUseCase editDonor, GetDonorQuery getDonor,
+                    SearchDonorsQuery searchDonors, CountDonorsQuery countDonors) {
         this.registerDonor = registerDonor;
+        this.editDonor = editDonor;
         this.getDonor = getDonor;
         this.searchDonors = searchDonors;
         this.countDonors = countDonors;
@@ -77,5 +82,16 @@ class DonorController {
     @Operation(operationId = "getDonor", summary = "One donor, with their details from the registry")
     DonorDetails get(@PathVariable UUID donorId) {
         return getDonor.getDonor(donorId);
+    }
+
+    @PutMapping("/{donorId}")
+    @Operation(operationId = "editDonor", summary = "Change a donor's details",
+            description = "Send both versions you read. 409 if the donor or the person was changed since: reload and "
+                    + "edit again. Leave pan out to keep it, send \"\" to remove it.")
+    DonorDetails edit(@PathVariable UUID donorId, @Valid @RequestBody EditDonorRequest request) {
+        return editDonor.edit(new EditDonorCommand(donorId, request.version(), request.personVersion(),
+                request.firstName(), request.lastName(), request.dateOfBirth(), request.phone(), request.email(),
+                request.type(), request.pan(), Boolean.TRUE.equals(request.wantsTaxReceipt()),
+                Boolean.TRUE.equals(request.receivesUpdates())));
     }
 }
