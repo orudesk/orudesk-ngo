@@ -25,4 +25,5 @@ rootProject.name = 'orudesk-ngo'
 includeBuild '../../orudesk/api'
 
 include 'modules:orudesk-ngo-donors'
+include 'modules:orudesk-ngo-donations'
 include 'apps:orudesk-ngo'

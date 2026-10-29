@@ -5,6 +5,8 @@ import com.orudesk.orudesk.donors.application.port.in.DonorCount;
 import com.orudesk.orudesk.donors.application.port.in.DonorDetails;
 import com.orudesk.orudesk.donors.application.port.in.DonorListItem;
 import com.orudesk.orudesk.donors.application.port.in.DonorEdited;
+import com.orudesk.orudesk.donors.application.port.in.DonorForReceipt;
+import com.orudesk.orudesk.donors.application.port.in.DonorReceiptQuery;
 import com.orudesk.orudesk.donors.application.port.in.DonorPage;
 import com.orudesk.orudesk.donors.application.port.in.DonorSearch;
 import com.orudesk.orudesk.donors.application.port.in.EditDonorCommand;
@@ -38,11 +40,12 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 class DonorService implements RegisterDonorUseCase, EditDonorUseCase, GetDonorQuery, SearchDonorsQuery,
-        CountDonorsQuery {
+        CountDonorsQuery, DonorReceiptQuery {
 
     private final RegisterPersonUseCase registerPerson;
     private final EditPersonUseCase editPerson;
@@ -133,6 +136,16 @@ class DonorService implements RegisterDonorUseCase, EditDonorUseCase, GetDonorQu
     public DonorDetails getDonor(UUID donorId) {
         DonorId id = new DonorId(donorId);
         return readDonorsPort.findDetails(id).orElseThrow(() -> new DonorNotFoundException(id));
+    }
+
+    /** The name and email from the summary view; the PAN from the table, because the view only has its mask. */
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<DonorForReceipt> findForReceipt(UUID donorId) {
+        DonorId id = new DonorId(donorId);
+        return readDonorsPort.findDetails(id).flatMap(details -> loadDonorPort.findById(id).map(donor ->
+                new DonorForReceipt(donorId, details.firstName() + " " + details.lastName(), details.email(),
+                        donor.pan() == null ? null : donor.pan().value(), donor.wantsTaxReceipt())));
     }
 
     @Override

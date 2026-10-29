@@ -275,6 +275,63 @@
         "tags" : [ "Authentication" ]
       }
     },
+    "/api/v1/donations" : {
+      "post" : {
+        "operationId" : "recordDonation",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RecordDonationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RecordDonationResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "Record money a donor gave",
+        "tags" : [ "Donations" ]
+      }
+    },
+    "/api/v1/donations/{donationId}" : {
+      "get" : {
+        "operationId" : "getDonation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "donationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DonationDetails"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "One donation",
+        "tags" : [ "Donations" ]
+      }
+    },
     "/api/v1/donors" : {
       "get" : {
         "operationId" : "searchDonors",
@@ -438,6 +495,34 @@
         },
         "summary" : "Change a donor's details",
         "tags" : [ "Donors" ]
+      }
+    },
+    "/api/v1/donors/{donorId}/donations" : {
+      "get" : {
+        "operationId" : "listDonorDonations",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "donorId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DonorDonations"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Everything a donor gave, newest first, and the total",
+        "tags" : [ "Donations" ]
       }
     },
     "/api/v1/org-units" : {
@@ -969,6 +1054,42 @@
         },
         "required" : [ "id" ]
       },
+      "DonationDetails" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "string"
+          },
+          "amountFormatted" : {
+            "type" : "string"
+          },
+          "donorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "donorName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "mode" : {
+            "type" : "string"
+          },
+          "purpose" : {
+            "type" : [ "string", "null" ]
+          },
+          "receivedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "reference" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "amount", "amountFormatted", "donorId", "donorName", "id", "mode", "receivedOn" ]
+      },
       "DonorCount" : {
         "type" : "object",
         "properties" : {
@@ -1041,6 +1162,24 @@
           }
         },
         "required" : [ "firstName", "id", "lastName", "personId", "personVersion", "receivesUpdates", "registeredOn", "type", "version", "wantsTaxReceipt" ]
+      },
+      "DonorDonations" : {
+        "type" : "object",
+        "properties" : {
+          "donations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DonationDetails"
+            }
+          },
+          "total" : {
+            "type" : "string"
+          },
+          "totalFormatted" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "donations", "total", "totalFormatted" ]
       },
       "DonorListItem" : {
         "type" : "object",
@@ -1301,6 +1440,51 @@
           }
         },
         "required" : [ "items" ]
+      },
+      "RecordDonationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "string",
+            "example" : "1500.00",
+            "minLength" : 1,
+            "pattern" : "^[0-9]{1,12}(\\.[0-9]{1,2})?$"
+          },
+          "donorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "mode" : {
+            "type" : "string",
+            "enum" : [ "CASH", "CHEQUE", "BANK_TRANSFER", "UPI", "CARD", "ONLINE" ],
+            "minLength" : 1
+          },
+          "purpose" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "receivedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "reference" : {
+            "type" : [ "string", "null" ],
+            "maxLength" : 50,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "amount", "donorId", "mode", "receivedOn" ]
+      },
+      "RecordDonationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "id" ]
       },
       "RefreshTokenRequest" : {
         "type" : "object",

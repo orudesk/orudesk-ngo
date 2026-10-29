@@ -1,0 +1,96 @@
+package com.orudesk.orudesk.donations.application.service;
+
+import com.orudesk.orudesk.donations.application.port.in.DonationDetails;
+import com.orudesk.orudesk.donations.application.port.in.DonationRecorded;
+import com.orudesk.orudesk.donations.application.port.in.DonorDonations;
+import com.orudesk.orudesk.donations.application.port.in.GetDonationQuery;
+import com.orudesk.orudesk.donations.application.port.in.RecordDonationCommand;
+import com.orudesk.orudesk.donations.application.port.in.RecordDonationUseCase;
+import com.orudesk.orudesk.donations.application.port.out.LoadDonationPort;
+import com.orudesk.orudesk.donations.application.port.out.SaveDonationPort;
+import com.orudesk.orudesk.donations.domain.Amount;
+import com.orudesk.orudesk.donations.domain.Donation;
+import com.orudesk.orudesk.donations.domain.DonationId;
+import com.orudesk.orudesk.donations.domain.DonationNotFoundException;
+import com.orudesk.orudesk.donations.domain.PaymentMode;
+import com.orudesk.orudesk.donations.domain.UnknownDonorException;
+import com.orudesk.orudesk.donors.application.port.in.DonorForReceipt;
+import com.orudesk.orudesk.donors.application.port.in.DonorReceiptQuery;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.Locale;
+import java.util.UUID;
+
+@Service
+class DonationService implements RecordDonationUseCase, GetDonationQuery {
+
+    private final DonorReceiptQuery donors;
+    private final SaveDonationPort saveDonationPort;
+    private final LoadDonationPort loadDonationPort;
+    private final Clock clock;
+    private final ApplicationEventPublisher events;
+
+    DonationService(DonorReceiptQuery donors, SaveDonationPort saveDonationPort, LoadDonationPort loadDonationPort,
+                    Clock clock, ApplicationEventPublisher events) {
+        this.donors = donors;
+        this.saveDonationPort = saveDonationPort;
+        this.loadDonationPort = loadDonationPort;
+        this.clock = clock;
+        this.events = events;
+    }
+
+    /**
+     * The donor is looked up through the donors module's API, in this tenant: a donation for another NGO's donor
+     * is refused like a donor that doesn't exist. The table's foreign key backs that up.
+     */
+    @Override
+    @Transactional
+    public UUID record(RecordDonationCommand command) {
+        DonorForReceipt donor = donors.findForReceipt(command.donorId())
+                .orElseThrow(() -> new UnknownDonorException(command.donorId()));
+        Donation donation = Donation.record(donor.donorId(), Amount.of(command.amount()), command.receivedOn(),
+                mode(command.mode()), command.reference(), command.purpose(), LocalDate.now(clock));
+        saveDonationPort.save(donation);
+        events.publishEvent(new DonationRecorded(donation.id().value(), donor.donorId(), donor.fullName(),
+                donation.amount().formatted()));
+        return donation.id().value();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DonationDetails getDonation(UUID donationId) {
+        DonationId id = new DonationId(donationId);
+        Donation donation = loadDonationPort.findById(id).orElseThrow(() -> new DonationNotFoundException(id));
+        String donorName = donors.findForReceipt(donation.donorId()).map(DonorForReceipt::fullName).orElse("");
+        return details(donation, donorName);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DonorDonations donationsOf(UUID donorId) {
+        DonorForReceipt donor = donors.findForReceipt(donorId).orElseThrow(() -> new UnknownDonorException(donorId));
+        Amount total = loadDonationPort.totalOf(donorId).orElse(null);
+        return new DonorDonations(
+                loadDonationPort.findByDonor(donorId).stream().map(d -> details(d, donor.fullName())).toList(),
+                total == null ? "0.00" : total.plain(),
+                total == null ? "₹0.00" : total.formatted());
+    }
+
+    private static PaymentMode mode(String mode) {
+        try {
+            return PaymentMode.valueOf(mode.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("unknown payment mode: " + mode);
+        }
+    }
+
+    private static DonationDetails details(Donation donation, String donorName) {
+        return new DonationDetails(donation.id().value(), donation.donorId(), donorName, donation.amount().plain(),
+                donation.amount().formatted(), donation.receivedOn(), donation.mode().name(), donation.reference(),
+                donation.purpose());
+    }
+}

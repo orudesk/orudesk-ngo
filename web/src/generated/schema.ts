@@ -140,6 +140,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/donations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record money a donor gave */
+    post: operations['recordDonation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/donations/{donationId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One donation */
+    get: operations['getDonation'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/donors': {
     parameters: {
       query?: never;
@@ -189,6 +223,23 @@ export interface paths {
      * @description Send both versions you read. 409 if the donor or the person was changed since: reload and edit again. Leave pan out to keep it, send "" to remove it.
      */
     put: operations['editDonor'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/donors/{donorId}/donations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Everything a donor gave, newest first, and the total */
+    get: operations['listDonorDonations'];
+    put?: never;
     post?: never;
     delete?: never;
     options?: never;
@@ -433,6 +484,20 @@ export interface components {
       /** Format: uuid */
       id: string;
     };
+    DonationDetails: {
+      amount: string;
+      amountFormatted: string;
+      /** Format: uuid */
+      donorId: string;
+      donorName: string;
+      /** Format: uuid */
+      id: string;
+      mode: string;
+      purpose?: string | null;
+      /** Format: date */
+      receivedOn: string;
+      reference?: string | null;
+    };
     DonorCount: {
       /** Format: int64 */
       donors: number;
@@ -463,6 +528,11 @@ export interface components {
       /** Format: int64 */
       version: number;
       wantsTaxReceipt: boolean;
+    };
+    DonorDonations: {
+      donations: components['schemas']['DonationDetails'][];
+      total: string;
+      totalFormatted: string;
     };
     DonorListItem: {
       firstName: string;
@@ -550,6 +620,22 @@ export interface components {
     PersonPage: {
       items: components['schemas']['PersonDetails'][];
       nextCursor?: string | null;
+    };
+    RecordDonationRequest: {
+      /** @example 1500.00 */
+      amount: string;
+      /** Format: uuid */
+      donorId: string;
+      /** @enum {string} */
+      mode: 'CASH' | 'CHEQUE' | 'BANK_TRANSFER' | 'UPI' | 'CARD' | 'ONLINE';
+      purpose?: string | null;
+      /** Format: date */
+      receivedOn: string;
+      reference?: string | null;
+    };
+    RecordDonationResponse: {
+      /** Format: uuid */
+      id: string;
     };
     RefreshTokenRequest: {
       refreshToken: string;
@@ -837,6 +923,52 @@ export interface operations {
       };
     };
   };
+  recordDonation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RecordDonationRequest'];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RecordDonationResponse'];
+        };
+      };
+    };
+  };
+  getDonation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        donationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DonationDetails'];
+        };
+      };
+    };
+  };
   searchDonors: {
     parameters: {
       query?: {
@@ -950,6 +1082,28 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['DonorDetails'];
+        };
+      };
+    };
+  };
+  listDonorDonations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        donorId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DonorDonations'];
         };
       };
     };

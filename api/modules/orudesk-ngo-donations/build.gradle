@@ -1,0 +1,11 @@
+// Donations: money given by donors, with receipts. Owns the ngo_donation table (Day 56).
+plugins {
+    id 'orudesk-ngo.java-conventions'
+}
+
+dependencies {
+    implementation 'com.orudesk:orudesk-platform-core'   // ModuleMigrations, tenancy, security, AuditableEvent
+    implementation 'com.orudesk:orudesk-identity'        // RoleDefinition
+    implementation project(':modules:orudesk-ngo-donors') // who gave: through the donors module's public API only
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+}
